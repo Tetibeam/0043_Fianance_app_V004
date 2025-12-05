@@ -20,58 +20,50 @@ def _read_table_from_db():
     df_asset_profit = query_table_aggregated(
         table_name="asset_profit_detail",
         aggregates={
+            "資産タイプ": "MAX",
+            "資産カテゴリー": "MAX",
             "資産額": "SUM",
-            "トータルリターン": "SUM"
+            "トータルリターン": "SUM",
+            "取得価格": "SUM"
         },
-        group_by=["date"],
+        group_by=["date","資産サブタイプ"],
         start_date=start_date,
         end_date=latest_date,
         filters=None,
         order_by=["date"]
-    ).rename(columns={"資産額": "実績_資産額", "トータルリターン": "実績_トータルリターン"}).set_index("date")
-    df_balance = query_table_aggregated(
-        table_name="balance_detail",
-        aggregates={
-            "金額": "SUM",
-            "目標": "SUM"
-        },
-        group_by=["date", "収支タイプ", "収支カテゴリー"],
-        start_date=start_date,
-        end_date=latest_date,
-        filters=None,
-        order_by=["date"]
-    ).set_index("date")
-    df_target = query_table_aggregated(
-        table_name="target_asset_profit",
-        aggregates={
-            "資産額": "SUM",
-            "トータルリターン": "SUM"
-        },
-        group_by=["date"],
-        start_date=start_date,
-        end_date=latest_date,
-        filters=None,
-        order_by=["date"]
-    ).rename(columns={"資産額": "目標_資産額", "トータルリターン": "目標_トータルリターン"}).set_index("date")
-
-    df = pd.concat([df_asset_profit, df_balance, df_target], axis=1)
-    #print(df)
-    return df
+    )
+    #print(df_asset_profit)
+    return df_asset_profit
 
 def _build_summary(df_collection) -> Dict[str, float]:
-    latest = get_latest_date()
-    total_assets = int(df_collection.loc[latest, "実績_資産額"].iloc[0]) 
-    total_target_assets = int(df_collection.loc[latest, "目標_資産額"].iloc[0])
-    fire_progress = int(df_collection.loc[latest, "実績_資産額"].iloc[0] / df_collection.loc[latest, "目標_資産額"].iloc[0] * 100)
-    difference = int(total_assets - total_target_assets)
-    
+    latest = get_latest_date()    
     latest = latest.strftime("%Y/%m/%d")
+    df = df_collection.copy()
+    total_asset = df[df["資産タイプ"].isin(["リスク資産", "安全資産"])].groupby("date")["資産額"].sum().loc[latest]
+    active_growth_capital = (
+        df[df["資産タイプ"] == "リスク資産"].groupby("date")["資産額"].sum().loc[latest]/
+        total_asset
+    )
+    aggresive_return_exposure = (
+        df[df["資産サブタイプ"].isin(
+            ["国内株式", "投資信託", "ソーシャルレンディング", "セキュリティートークン", "暗号資産"]
+        )].groupby("date")["資産額"].sum().loc[latest]/
+        total_asset
+    )
+    emergency_buffer = (int(
+        df[df["資産サブタイプ"].isin(["現金", "普通預金/MRF"])].groupby("date")["資産額"].sum().loc[latest]
+    ))
+    debt_exposure_ratio = (
+        df[df["資産タイプ"] == "負債"].groupby("date")["資産額"].sum().loc[latest]/
+        total_asset*-1
+    )
+    
     return {
         "latest_date": latest,
-        "fire_progress": fire_progress,
-        "total_assets": total_assets,
-        "total_target_assets": total_target_assets,
-        "difference": difference,
+        "Active Growth Capital": active_growth_capital,
+        "Aggressive Return Exposure": aggresive_return_exposure,
+        "Emergency Buffer": emergency_buffer,
+        "Debt Exposure Ratio": debt_exposure_ratio,
     }
 
 def _make_graph_template():
@@ -130,7 +122,7 @@ def _graph_individual_setting(fig, x_title, x_tickformat, y_title, y_tickprefix,
     )
     return fig
 
-def _build_progress_rate(df_collection):
+def _build_asset_tree_map(df_collection):
     # データフレーム
     df = pd.DataFrame(columns=["生値", "スムージング"])
     df["生値"] = df_collection["実績_資産額"] / df_collection["目標_資産額"]
@@ -336,12 +328,12 @@ def build_dashboard_payload(include_graphs: bool = True, include_summary: bool =
         _make_graph_template()
 
         result["graphs"] = {
-            "progress_rate": _build_progress_rate(df_collection),
-            "saving_rate": _build_saving_rate(df_collection),
-            "assets": _build_total_assets(df_collection),
-            "returns": _build_total_returns(df_collection),
-            "general_balance": _build_general_balance(df_collection),
-            "special_balance": _build_special_balance(df_collection)
+            "asset_tree_map": _build_asset_tree_map(df_collection),
+            #"saving_rate": _build_saving_rate(df_collection),
+            #"assets": _build_total_assets(df_collection),
+            #"returns": _build_total_returns(df_collection),
+            #"general_balance": _build_general_balance(df_collection),
+            #"special_balance": _build_special_balance(df_collection)
         }
     return result
 
@@ -356,13 +348,14 @@ if __name__ == "__main__":
     from app.utils.db_manager import init_db
     init_db(base_dir)
     df = _read_table_from_db()
+    #print(df)
     print(_build_summary(df))
-    _build_progress_rate(df)
-    _build_saving_rate(df)
-    _build_total_assets(df)
-    _build_total_returns(df)
-    _build_general_balance(df)
-    _build_special_balance(df)
+    #_build_progress_rate(df)
+    #_build_saving_rate(df)
+    #_build_total_assets(df)
+    #_build_total_returns(df)
+    #_build_general_balance(df)
+    #_build_special_balance(df)
 
 
 

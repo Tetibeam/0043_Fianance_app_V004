@@ -1,12 +1,12 @@
 from flask import Blueprint, current_app,jsonify,make_response
-from .Portfolio_Command_Center_service import build_dashboard_payload
+from .Allocation_Matrix_service import build_dashboard_payload
 from werkzeug.exceptions import InternalServerError
 import os
 
-Portfolio_Command_Center_bp = Blueprint("Portfolio_Command_Center", __name__, url_prefix="/api/Portfolio_Command_Center")
+Allocation_Matrix_bp = Blueprint("Allocation_Matrix", __name__, url_prefix="/api/Allocation_Matrix")
 
 # API 用ルート
-@Portfolio_Command_Center_bp.route("/", methods=["GET"])
+@Allocation_Matrix_bp.route("/", methods=["GET"])
 def index():
     """
     API root: 簡単なメタ情報を返す
@@ -21,7 +21,7 @@ def index():
     }
     return jsonify(payload)
 
-@Portfolio_Command_Center_bp.route("/graphs", methods=["GET"])
+@Allocation_Matrix_bp.route("/graphs", methods=["GET"])
 def graphs():
     """
     グラフ用データを返すエンドポイント。
@@ -41,7 +41,7 @@ def graphs():
         raise InternalServerError(description=str(e))
 
 
-@Portfolio_Command_Center_bp.route("/summary", methods=["GET"])
+@Allocation_Matrix_bp.route("/summary", methods=["GET"])
 def summary():
     """
     サマリ（軽量）だけほしいフロントのための簡易エンドポイント。

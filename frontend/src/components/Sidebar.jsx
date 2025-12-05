@@ -10,7 +10,7 @@ function Sidebar() {
       <nav>
         <Link to="/">Portfolio Command Center</Link>
         {/* 今後追加予定のページリンク */}
-        {/* <Link to="/allocation">Allocation Matrix</Link> */}
+        <Link to="/allocation_matrix">Allocation Matrix</Link>
         {/* <Link to="/cashflow">Cashflow Analytics</Link> */}
         {/* <Link to="/performance">Investment Performance Lab</Link> */}
       </nav>
