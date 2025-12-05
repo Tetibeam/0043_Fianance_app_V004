@@ -58,20 +58,77 @@ def _read_table_from_db():
     #print(df)
     return df
 
+def _make_vector(current, previous):
+    if previous == 0:
+        return 0
+    rate = current / previous
+    if rate > 1.005:
+        return 1
+    elif rate < 0.995:
+        return -1
+    else:
+        return 0
+
+# end def
 def _build_summary(df_collection) -> Dict[str, float]:
     latest = get_latest_date()
-    total_assets = df_collection.loc[latest, "実績_資産額"].iloc[0]
-    total_target_assets = df_collection.loc[latest, "目標_資産額"].iloc[0]
-    fire_progress = df_collection.loc[latest, "実績_資産額"].iloc[0] / df_collection.loc[latest, "目標_資産額"].iloc[0]
-    difference = total_assets - total_target_assets
+    one_month_ago = latest - pd.DateOffset(months=1)
+
+    try:
+        total_assets = df_collection.loc[latest, "実績_資産額"].iloc[0]
+        total_target_assets = df_collection.loc[latest, "目標_資産額"].iloc[0]
+    except KeyError:
+        # Latest data missing is critical, let it fail or handle globally
+        raise
+
+    # Handle missing previous month data gracefully
+    if one_month_ago in df_collection.index:
+        total_assets_one_month_ago = df_collection.loc[one_month_ago, "実績_資産額"].iloc[0]
+        total_target_assets_one_month_ago = df_collection.loc[one_month_ago, "目標_資産額"].iloc[0]
+        
+        # Avoid division by zero if target is 0 for some reason, though unlikely for target
+        target_latest = df_collection.loc[latest, "目標_資産額"].iloc[0]
+        target_prev = df_collection.loc[one_month_ago, "目標_資産額"].iloc[0]
+        
+        if target_latest != 0:
+            fire_progress = df_collection.loc[latest, "実績_資産額"].iloc[0] / target_latest
+        else:
+            fire_progress = 0
+            
+        if target_prev != 0:
+            fire_progress_one_month_ago = df_collection.loc[one_month_ago, "実績_資産額"].iloc[0] / target_prev
+        else:
+            fire_progress_one_month_ago = 0
+            
+        difference = total_assets - total_target_assets
+        difference_one_month_ago = total_assets_one_month_ago - total_target_assets_one_month_ago
+    else:
+        # Fallback values if previous month is missing
+        total_assets_one_month_ago = total_assets
+        total_target_assets_one_month_ago = total_target_assets
+        
+        target_latest = df_collection.loc[latest, "目標_資産額"].iloc[0]
+        if target_latest != 0:
+            fire_progress = df_collection.loc[latest, "実績_資産額"].iloc[0] / target_latest
+        else:
+            fire_progress = 0
+            
+        fire_progress_one_month_ago = fire_progress
+        
+        difference = total_assets - total_target_assets
+        difference_one_month_ago = difference
     
-    latest = latest.strftime("%Y/%m/%d")
+    latest_str = latest.strftime("%Y/%m/%d")
     return {
-        "latest_date": latest,
+        "latest_date": latest_str,
         "fire_progress": round(fire_progress*100, 1),
+        "fire_progress_vector":_make_vector(fire_progress, fire_progress_one_month_ago), 
         "total_assets": round(total_assets, 0),
+        "total_assets_vector":_make_vector(total_assets, total_assets_one_month_ago),
         "total_target_assets": round(total_target_assets, 0),
+        "total_target_assets_vector":_make_vector(total_target_assets, total_target_assets_one_month_ago),
         "difference": round(difference, 0),
+        "difference_vector":_make_vector(difference, difference_one_month_ago), 
     }
 
 def _make_graph_template():
@@ -357,12 +414,12 @@ if __name__ == "__main__":
     init_db(base_dir)
     df = _read_table_from_db()
     print(_build_summary(df))
-    _build_progress_rate(df)
-    _build_saving_rate(df)
-    _build_total_assets(df)
-    _build_total_returns(df)
-    _build_general_balance(df)
-    _build_special_balance(df)
+    #_build_progress_rate(df)
+    #_build_saving_rate(df)
+    #_build_total_assets(df)
+    #_build_total_returns(df)
+    #_build_general_balance(df)
+    #_build_special_balance(df)
 
 
 

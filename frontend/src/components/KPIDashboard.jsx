@@ -22,6 +22,13 @@ function KPIDashboard() {
     fetchSummary()
   }, [])
 
+  const getVectorIcon = (vector) => {
+    if (vector === 1) return '👆 '
+    if (vector === -1) return '👇 '
+    if (vector === 0) return '👉 '
+    return '　 '
+  }
+
   if (loading) return <div id="dashboard-summary">読み込み中...</div>
   if (error) return <div id="dashboard-summary">エラー: {error}</div>
   if (!summary) return null
@@ -51,16 +58,16 @@ function KPIDashboard() {
         <div>{summary.latest_date}</div>
         
         <div>Fire Progress:</div>
-        <div>{summary.fire_progress.toLocaleString()}%</div>
+        <div>{getVectorIcon(summary.fire_progress_vector)}{summary.fire_progress.toLocaleString()}%</div>
         
         <div>Net Worth :</div>
-        <div>¥ {summary.total_assets.toLocaleString()}</div>
+        <div>{getVectorIcon(summary.total_assets_vector)}¥ {summary.total_assets.toLocaleString()}</div>
         
-        <div>Net Worth Target:</div>
-        <div>¥ {summary.total_target_assets.toLocaleString()}</div>
+        <div> Net Worth Target:</div>
+        <div>{getVectorIcon(summary.total_target_assets_vector)}¥ {summary.total_target_assets.toLocaleString()}</div>
         
-        <div>Net Worth Difference:</div>
-        <div>¥ {summary.difference.toLocaleString()}</div>
+        <div>Capital Goal Track:</div>
+        <div>{getVectorIcon(summary.difference_vector)}¥ {summary.difference.toLocaleString()}</div>
       </div>
     </div>
   )
