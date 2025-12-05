@@ -45,7 +45,7 @@ function KPIDashboard() {
         <h3 style={{
           margin: 0,
           fontFamily: "'Montserrat', sans-serif",
-          fontSize: '1.1em',
+          fontSize: '2vh',
           fontWeight: 600,
           letterSpacing: '0.5px',
           color: '#ffffff',
@@ -54,11 +54,14 @@ function KPIDashboard() {
       </div>
       
       <div className="summary-grid">
+        
         <div>Date:</div>
         <div>{summary.latest_date}</div>
         
         <div>Fire Progress:</div>
-        <div>{getVectorIcon(summary.fire_progress_vector)}{summary.fire_progress.toLocaleString()}%</div>
+        <div>
+          {getVectorIcon(summary.fire_progress_vector)}
+          {summary.fire_progress.toLocaleString()}%</div>
         
         <div>Net Worth :</div>
         <div>{getVectorIcon(summary.total_assets_vector)}¥ {summary.total_assets.toLocaleString()}</div>

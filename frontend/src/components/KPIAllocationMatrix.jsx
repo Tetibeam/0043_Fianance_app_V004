@@ -33,7 +33,7 @@ function KPIAllocationMatrix() {
         padding: '12px 16px',
         borderRadius: '8px 8px 0 0',
         margin: '-8px -8px 12px -8px',
-        borderBottom: '2px solid #4a90e2'
+        borderBottom: '2px solid #4a90e2',
       }}>
         <h3 style={{
           margin: 0,
