@@ -207,7 +207,7 @@ def _build_asset_tree_map(df_collection):
         "国内株式":"Domestic Equity",
     })
 
-    #データフレーム作成
+    # グラフ生成
     labels = df_tree["labels"].tolist()
     parents = df_tree["parents"].tolist()
     values = df_tree["values"].astype(int).tolist()
@@ -249,9 +249,17 @@ def _set_return(df_map, df, latest, one_year_ago):
         mean_asset = df[df["資産サブタイプ"] == subtype]["資産額"].mean()
         df_sub.loc[subtype, "リターン"] = (
             (latest_return - one_year_ago_return) / mean_asset
-        ) 
-    df_sub.loc["ソーシャルレンディング", "リターン"] = df_sub.loc["預入金", "リターン"]
+        )
+        df_sub.loc[subtype, "資産額"] = mean_asset
+    # ソーシャルレンディング
+    latest_return = df.loc[(df["資産サブタイプ"] == "預入金") & (df["date"] == latest), "トータルリターン"].iloc[0]
+    one_year_ago_return = df.loc[(df["資産サブタイプ"] == "預入金") & (df["date"] == one_year_ago), "トータルリターン"].iloc[0]
+    mean_asset = df[df["資産サブタイプ"] == "ソーシャルレンディング"]["資産額"].mean()
+    df_sub.loc["ソーシャルレンディング", "リターン"] = (
+        (latest_return - one_year_ago_return) / mean_asset
+    )
     df_sub.loc["預入金", "リターン"] = 0.0
+
     return df_sub
 
 def _set_sharp_ratio(df_map, df, latest, one_year_ago):
@@ -280,9 +288,9 @@ def _set_sharp_ratio(df_map, df, latest, one_year_ago):
         df_sub.loc[type, "シャープレシオ"] = (
             (df_sub.loc[type, "リターン"] - risk_free_rate) / annualized_volatility
         )
-
+        #print(annualized_volatility)
     # その他は応用シャープレシオ
-    expected_volatility = 2 / 25
+    expected_volatility = 2 / 25 # 遅延リスク
     df_sub.loc["ソーシャルレンディング", "シャープレシオ"] = (
         (df_sub.loc["ソーシャルレンディング", "リターン"] - risk_free_rate) / expected_volatility
     )
@@ -298,13 +306,15 @@ def _set_sharp_ratio(df_map, df, latest, one_year_ago):
     df_sub.loc["外貨普通預金", "シャープレシオ"] = (
         (df_sub.loc["外貨普通預金", "リターン"] - risk_free_rate) / expected_volatility
     )
+    df_sub.loc["暗号資産", "シャープレシオ"] = 0.0
 
     return df_sub
 
 def _build_portfolio_efficiency_map(df_collection):
+    # データフレーム作成
     df = df_collection.copy()
     df.drop(df[df["資産サブタイプ"] == "住宅ローン"].index, inplace=True)
-    df_map = pd.DataFrame(index=df["資産サブタイプ"].unique(), columns=["リターン","シャープレシオ"])
+    df_map = pd.DataFrame(index=df["資産サブタイプ"].unique(), columns=["リターン","シャープレシオ","資産額"])
 
     # 厳密に1年間にフィルタ
     latest = df["date"].max()
@@ -315,9 +325,76 @@ def _build_portfolio_efficiency_map(df_collection):
     df_map = _set_return(df_map, df, latest, one_year_ago)
     df_map = _set_sharp_ratio(df_map, df, latest, one_year_ago)
 
-    print(df_map)
+    # 名称変換
+    df_map.index = df_map.index.map({
+        "現金/電子マネー":"Cash",
+        "普通預金/MRF":"Cash Reserves",
+        "定期預金/仕組預金":"Time Deposits",
+        "確定年金":"Real Estate",
+        "日本国債":"Securities",
+        "預入金":"Cash Deposits",
+        "ポイント":"Loyalty Rewards",
+        "投資信託":"Investment Trust",
+        "ソーシャルレンディング":"P2P Lending",
+        "セキュリティートークン":"Tokenized Real Estate",
+        "確定拠出年金":"Defined Contribution Plan",
+        "暗号資産":"Digital Assets",
+        "円建社債":"Fixed Income",
+        "国内株式":"Domestic Equity",
+        "外貨普通預金":"Foreign Currency",
+    })
 
-    pass
+    # グラフ生成
+    df_map.reset_index(names=["資産サブタイプ"], inplace=True)
+    x_values = df_map["リターン"].astype(float).tolist()
+    y_values = df_map["シャープレシオ"].astype(float).tolist()
+    labels = df_map["資産サブタイプ"].tolist()
+    # ---- バブルサイズ正規化（推奨）----
+    size_values = df_map["資産額"].abs().astype(int)
+    size_scaled = np.sqrt(size_values)  # √でボラを抑える
+    size_scaled = size_scaled * (80 / size_scaled.max())  # maxが80pxになるよう調整
+
+    fig = go.Figure(
+        data=go.Scatter(
+            x=x_values,
+            y=y_values,
+            mode="markers",
+            marker=dict(
+                size=size_scaled,
+                color=size_scaled,
+                colorscale="Blues",
+                colorbar=dict(tickprefix="¥",ticksuffix="M",tickformat=",.0f"),
+                showscale=True,
+                opacity=0.7,
+                sizemode="diameter"
+            ),
+            text=labels,
+            customdata=size_values,
+            hovertemplate =
+                '<br><i>Name</i>: %{text}'+
+                '<br><i>Return</i>: %{x:.1%}<extra></extra>'+
+                '<br><i>Sharpe Ratio</i>: %{y:.1f}<extra></extra>'+
+                '<br><i>Asset Size</i>: ¥%{customdata:,}<extra></extra>'
+        )
+    )
+    _graph_individual_setting(
+        fig,
+        x_title="Return",
+        y_title="Sharpe Ratio",
+        x_tickformat=".1%",
+        y_tickformat=".1f",
+        y_tickprefix=""
+    )
+    fig.update_layout(
+        meta={"id": "portfolio_efficiency_map"}
+    )
+
+    #fig.show()
+
+    fig_dict = fig.to_dict()
+    json_str = json.dumps(fig_dict)
+    return json_str
+
 
 def _build_liquidity_pyramid(df_collection):
     pass

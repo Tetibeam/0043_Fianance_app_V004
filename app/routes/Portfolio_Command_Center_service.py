@@ -161,7 +161,7 @@ def _build_progress_rate(df_collection):
     df["スムージング"] = df["生値"].rolling(window=30).mean()
     df.fillna(1, inplace=True)
 
-    # PXでグラフ生成
+    # グラフ生成
     x_values = df.index.strftime("%Y-%m-%d").tolist()
     y1_values = df["生値"].astype(float).tolist()
     y2_values = df["スムージング"].astype(float).tolist()
