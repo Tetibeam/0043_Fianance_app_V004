@@ -2,12 +2,7 @@ from .utils.make_target import make_target_main
 from .utils.asset_aggregation import make_asset_main
 from .utils.balance_aggregation import make_balance_main
 from .utils.profit_aggregation import make_profit_main
-from .utils.make_cache import make_cache_main
-
-
-from .lib.file_io import load_parquet, save_csv, load_csv
-from .lib.agg_settings import PATH_ASSET_PROFIT_DETAIL, PATH_BALANCE_DETAIL
-PATH_ASSET_PROFIT_DETAIL_DEV = "G:/マイドライブ/AssetManager/total/output/asset_detail_test2.parquet"
+from .lib.file_io import load_parquet, save_csv, load_csv, save_parquet
 
 import os
 import requests
@@ -22,9 +17,12 @@ API_BASE = os.environ.get("API_BASE_URL", "http://localhost:5000")
 
 # データソース
 from batch.lib.agg_settings import (
-    PATH_ASSET_PROFIT_DETAIL_TEST2, PATH_BALANCE_DETAIL
+    PATH_ASSET_PROFIT_DETAIL_TEST2, PATH_BALANCE_DETAIL,
+    PATH_ASSET_TYPE_AND_CATEGORY, PATH_ASSET_TYPE_AND_CATEGORY_PARQUET
 )
-from batch.lib.target_settings import PATH_TARGET_ASSET_PROFIT, PATH_TARGET_PARAMETER, PATH_TARGET_RATE
+from batch.lib.target_settings import (
+    PATH_TARGET_ASSET_PROFIT, PATH_TARGET_PARAMETER, PATH_TARGET_RATE
+)
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -78,12 +76,18 @@ def update_db():
         logger.info(f"Uploading data to {upload_url}...")
 
         try:
+            # 資産クラス表のCSVを一度parquetに変換する
+            df = load_csv(PATH_ASSET_TYPE_AND_CATEGORY)
+            df["償還日"] = pd.to_datetime(df["償還日"])
+            save_parquet(df, PATH_ASSET_TYPE_AND_CATEGORY_PARQUET)
+            
             # with 文で複数ファイルを同時に開く
             with open(PATH_ASSET_PROFIT_DETAIL_TEST2, "rb") as asset_profit_detail,\
                 open(PATH_BALANCE_DETAIL, "rb") as balance_detail,\
                 open(PATH_TARGET_ASSET_PROFIT, "rb") as target_asset_profit,\
                 open(PATH_TARGET_PARAMETER, "rb") as target_parameter,\
-                open(PATH_TARGET_RATE, "rb") as target_rate:
+                open(PATH_TARGET_RATE, "rb") as target_rate,\
+                open(PATH_ASSET_TYPE_AND_CATEGORY_PARQUET, "rb") as asset_type_and_category:
 
                 files = {
                     "file_asset_profit_detail": ("file_asset_profit_detail", asset_profit_detail, "application/octet-stream"),
@@ -91,6 +95,7 @@ def update_db():
                     "file_target_asset_profit": ("file_target_asset_profit", target_asset_profit, "application/octet-stream"),
                     "file_target_parameter": ("file_target_parameter", target_parameter, "application/octet-stream"),
                     "file_target_rate": ("file_target_rate", target_rate, "application/octet-stream"),
+                    "file_asset_type_and_category": ("file_asset_type_and_category",asset_type_and_category, "application/octet-stream"),
                 }
             
                 resp = requests.post(upload_url, files=files, timeout=30)

@@ -499,7 +499,7 @@ def _build_liquidity_pyramid(df_collection):
 def _build_true_risk_exposure_flow(df_collection):
     pass
 
-def _build_rebalancing_workbench(df_collection):
+def _build_liquidity_horizon(df_collection):
     pass
 
 def build_dashboard_payload(include_graphs: bool = True, include_summary: bool = True) -> Dict[str, Any]:
@@ -520,7 +520,7 @@ def build_dashboard_payload(include_graphs: bool = True, include_summary: bool =
             "portfolio_efficiency_map": _build_portfolio_efficiency_map(df_collection),
             "liquidity_pyramid": _build_liquidity_pyramid(df_collection),
             "true_risk_exposure_flow": _build_true_risk_exposure_flow(df_collection),
-            "rebalancing_workbench": _build_rebalancing_workbench(df_collection)
+            "liquidity_horizon": _build_liquidity_horizon(df_collection)
         }
     return result
 

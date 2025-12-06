@@ -13,7 +13,8 @@ def upload_all():
     # 1. ファイルの取得
     required_keys = [
         "file_asset_profit_detail", "file_balance_detail",
-        "file_target_asset_profit", "file_target_parameter", "file_target_rate"
+        "file_target_asset_profit", "file_target_parameter", "file_target_rate",
+        "file_asset_type_and_category"
     ]
     missing = [k for k in required_keys if k not in request.files]
     if missing:
@@ -39,7 +40,7 @@ def upload_all():
         replace_to_table(dfs["file_target_asset_profit"], "target_asset_profit")
         replace_to_table(dfs["file_target_parameter"], "target_parameter")
         replace_to_table(dfs["file_target_rate"], "target_rate")
-    
+        replace_to_table(dfs["file_asset_type_and_category"], "asset_type_and_category")
     except Exception as e:
         return jsonify({"error": f"DB write failed: {e}"}), 500
 
@@ -51,6 +52,7 @@ def upload_all():
             "balance_detail": len(dfs["file_balance_detail"]),
             "target_asset_profit": len(dfs["file_target_asset_profit"]),
             "target_parameter": len(dfs["file_target_parameter"]),
-            "target_rate": len(dfs["file_target_rate"])    
+            "target_rate": len(dfs["file_target_rate"]),
+            "asset_type_and_category": len(dfs["file_asset_type_and_category"])
         }
     })

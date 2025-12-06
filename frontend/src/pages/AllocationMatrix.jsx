@@ -30,7 +30,7 @@ function AllocationMatrix() {
     'portfolio_efficiency_map',
     'liquidity_pyramid',
     'true_risk_exposure_flow',
-    'rebalancing_workbench'
+    'liquidity_horizon'
   ]
 
   // グラフタイトルのマッピング
@@ -40,7 +40,7 @@ function AllocationMatrix() {
     'portfolio_efficiency_map': "<span><img src='/static/icon/compass.svg' style='height:20px; margin-right:6px; opacity:0.85;'/> Portfolio Efficiency Map</span>",
     'liquidity_pyramid': "<span><img src='/static/icon/line-chart.svg' style='height:20px; margin-right:6px; opacity:0.85;'/> Liquidity Pyramid</span>",
     'true_risk_exposure_flow': "<span><img src='/static/icon/waves.svg' style='height:18px; margin-right:6px; opacity:0.85;'/> True Risk Exposure Flow</span>",
-    'rebalancing_workbench': "<span><img src='/static/icon/lighthouse.svg' style='height:18px; margin-right:6px; opacity:0.85;'/> Rebalancing Workbench</span>"
+    'liquidity_horizon': "<span><img src='/static/icon/lighthouse.svg' style='height:18px; margin-right:6px; opacity:0.85;'/> Liquidity Horizon</span>"
   }
 
   if (loading) {

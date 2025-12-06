@@ -2,6 +2,7 @@
 
 # Parameter
 PATH_ASSET_TYPE_AND_CATEGORY = "G:/マイドライブ/AssetManager/total/parameter/asset_category_and_type.csv"
+PATH_ASSET_TYPE_AND_CATEGORY_PARQUET = "G:/マイドライブ/AssetManager/total/parameter/asset_category_and_type.parquet"
 PATH_BALANCE_TYPE_AND_CATEGORY = "G:/マイドライブ/AssetManager/total/parameter/balance_category_and_type.parquet"
 PATH_OFFSET_UNREALIZED = "G:/マイドライブ/AssetManager/total/parameter/offset_unrealized.parquet"
 
