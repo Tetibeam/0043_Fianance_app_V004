@@ -237,14 +237,97 @@ def _build_asset_tree_map(df_collection):
 
 def _build_target_deviation(df_collection):
     pass
+
+def _set_return(df_map, df, latest, one_year_ago):
+    df_sub = df_map.copy()
+    subtypes= df_map.index.tolist()
+
+    for subtype in subtypes:
+        mask = (df["資産サブタイプ"] == subtype)
+        latest_return = df.loc[mask & (df["date"] == latest), "トータルリターン"].iloc[0]
+        one_year_ago_return = df.loc[mask & (df["date"] == one_year_ago), "トータルリターン"].iloc[0]
+        mean_asset = df[df["資産サブタイプ"] == subtype]["資産額"].mean()
+        df_sub.loc[subtype, "リターン"] = (
+            (latest_return - one_year_ago_return) / mean_asset
+        ) 
+    df_sub.loc["ソーシャルレンディング", "リターン"] = df_sub.loc["預入金", "リターン"]
+    df_sub.loc["預入金", "リターン"] = 0.0
+    return df_sub
+
+def _set_sharp_ratio(df_map, df, latest, one_year_ago):
+    df_sub = df_map.copy()
+    # 安全資産のシャープレシオはゼロ
+    types = [
+        "ポイント", "定期預金/仕組預金", "日本国債", "普通預金/MRF", "現金/電子マネー", "確定年金", "預入金"
+    ]
+    df_sub.loc[types, "シャープレシオ"] = 0.0
+
+    # 市場価格のあるのは、標準シャープレシオを計算する
+    types = ["確定拠出年金", "国内株式", "投資信託"]
+    df.set_index("date", inplace=True)
+    risk_free_rate = df_sub.loc["日本国債", "リターン"]
+    for type in types:
+        mask = (df["資産サブタイプ"] == type)
+        # ボラティリティ計算
+        df_tmp=pd.DataFrame()
+        df_tmp["前日の現在価値"] = df[mask]["資産額"].shift(1)
+        df_tmp["その日の積立額"] = df[mask]["取得価格"].diff()
+        df_tmp["その日の現在価値"] = df[mask]["資産額"]
+        df_tmp["その日のリターン"] = (df_tmp["その日の現在価値"] - df_tmp["前日の現在価値"] - df_tmp["その日の積立額"]) / df_tmp["前日の現在価値"]
+        daily_volatility = df_tmp["その日のリターン"].dropna().std()
+        annualized_volatility = daily_volatility * np.sqrt(250)
+        # シャープレシオ計算
+        df_sub.loc[type, "シャープレシオ"] = (
+            (df_sub.loc[type, "リターン"] - risk_free_rate) / annualized_volatility
+        )
+
+    # その他は応用シャープレシオ
+    expected_volatility = 2 / 25
+    df_sub.loc["ソーシャルレンディング", "シャープレシオ"] = (
+        (df_sub.loc["ソーシャルレンディング", "リターン"] - risk_free_rate) / expected_volatility
+    )
+    expected_volatility = 0.75
+    df_sub.loc["セキュリティートークン", "シャープレシオ"] = (
+        (df_sub.loc["セキュリティートークン", "リターン"] - risk_free_rate) / expected_volatility
+    )
+    expected_volatility = 0.01
+    df_sub.loc["円建社債", "シャープレシオ"] = (
+        (df_sub.loc["円建社債", "リターン"] - risk_free_rate) / expected_volatility
+    )
+    expected_volatility = 0.15
+    df_sub.loc["外貨普通預金", "シャープレシオ"] = (
+        (df_sub.loc["外貨普通預金", "リターン"] - risk_free_rate) / expected_volatility
+    )
+
+    return df_sub
+
 def _build_portfolio_efficiency_map(df_collection):
+    df = df_collection.copy()
+    df.drop(df[df["資産サブタイプ"] == "住宅ローン"].index, inplace=True)
+    df_map = pd.DataFrame(index=df["資産サブタイプ"].unique(), columns=["リターン","シャープレシオ"])
+
+    # 厳密に1年間にフィルタ
+    latest = df["date"].max()
+    one_year_ago = latest - pd.DateOffset(years=1)
+    df = df[df["date"] >= one_year_ago]
+    #print(latest, one_year_ago)
+
+    df_map = _set_return(df_map, df, latest, one_year_ago)
+    df_map = _set_sharp_ratio(df_map, df, latest, one_year_ago)
+
+    print(df_map)
+
     pass
+
 def _build_liquidity_pyramid(df_collection):
     pass
+
 def _build_true_risk_exposure_flow(df_collection):
     pass
+
 def _build_rebalancing_workbench(df_collection):
     pass
+
 def build_dashboard_payload(include_graphs: bool = True, include_summary: bool = True) -> Dict[str, Any]:
     # DBから必要データを読み込みます
     df_collection = _read_table_from_db()
@@ -280,12 +363,9 @@ if __name__ == "__main__":
     df = _read_table_from_db()
     #print(df)
     #print(_build_summary(df))
-    _build_asset_tree_map(df)
+    #_build_asset_tree_map(df)
     _build_target_deviation(df)
     _build_portfolio_efficiency_map(df)
     _build_liquidity_pyramid(df)
     _build_true_risk_exposure_flow(df)
     _build_rebalancing_workbench(df)
-
-
-
