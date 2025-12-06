@@ -219,8 +219,8 @@ def _build_asset_tree_map(df_collection):
             textinfo = "label+percent parent+percent entry",
             textfont_size= 14,hoverlabel_font_size = 14,
             hovertemplate =
-                '<br><i>Name</i>: %{label}'+
-                '<br><i>Amount</i>: ¥%{value}<extra></extra>'
+                '<br><b>Name</b>: %{label}'+
+                '<br><b>Amount</b>: ¥%{value}<extra></extra>'
         )
     )
     fig.update_layout(
@@ -371,10 +371,10 @@ def _build_portfolio_efficiency_map(df_collection):
             text=labels,
             customdata=size_values,
             hovertemplate =
-                '<br><i>Name</i>: %{text}'+
-                '<br><i>Return</i>: %{x:.1%}<extra></extra>'+
-                '<br><i>Sharpe Ratio</i>: %{y:.1f}<extra></extra>'+
-                '<br><i>Asset Size</i>: ¥%{customdata:,}<extra></extra>'
+                '<br><b>Name</b>: %{text}'+
+                '<br><b>Return</b>: %{x:.1%}'+
+                '<br><b>Sharpe Ratio</b>: %{y:.1f}'+
+                '<br><b>Asset Size</b>: ¥%{customdata:,}<extra></extra>'
         )
     )
     _graph_individual_setting(
@@ -395,9 +395,106 @@ def _build_portfolio_efficiency_map(df_collection):
     json_str = json.dumps(fig_dict)
     return json_str
 
-
 def _build_liquidity_pyramid(df_collection):
-    pass
+    #データの生成
+    df = df_collection.copy()
+    latest = df["date"].max()
+    df = df[df["date"] == latest]
+    #print(df["資産サブタイプ"].unique())
+    tiers = [
+        {'name': 'Tier 4: Long-Term / Illiquid Assets (Real Estate etc.)',
+        'value': df[df["資産サブタイプ"].isin(["確定年金", "確定拠出年金"])]["資産額"].sum().astype(int), 'color': '#5AB4EA'},
+
+        {'name': 'Tier 3: Committed / Frictional Capital (Time Deposits etc.)',
+        'value': df[df["資産サブタイプ"].isin(["円建社債", "定期預金/仕組預金","日本国債","セキュリティートークン","ソーシャルレンディング"])]["資産額"].sum().astype(int), 'color': '#377EB8'},
+        
+        {'name': 'Tier 2: Accessible Investment Buffer (Investment Trust etc.)',
+        'value': df[df["資産サブタイプ"].isin(["国内株式", "投資信託","暗号資産","預入金"])]["資産額"].sum().astype(int), 'color': '#1F4E79'},
+        
+        {'name': 'Tier 1: Immediate Defense Capital (Cash Reserves etc.)',
+        'value': df[df["資産サブタイプ"].isin(["ポイント", "外貨普通預金","普通預金/MRF","現金/電子マネー"])]["資産額"].sum().astype(int), 'color': '#002D62'}
+    ]
+    total_assets = sum(t['value'] for t in tiers)
+
+    fig = go.Figure()
+
+    for i, tier in enumerate(tiers):
+        # 棒の幅（資産額）
+        bar_width = tier['value']
+        
+        # 棒の左側のブランク（幅の計算）
+        # 全体幅 - 棒の幅 を 2で割ることで、左右の余白を等しくする
+        blank_width = (total_assets - bar_width) *0.5
+        
+        # ティアの高さ（Y軸のカテゴリ）
+        tier_category = tier['name'].split(':')[0] # Tier 1, Tier 2...
+
+        # 1. 左側のブランク（透明な棒）
+        fig.add_trace(go.Bar(
+            y=[tier_category],
+            x=[blank_width],
+            orientation='h',
+            marker=dict(color='rgba(0,0,0,0)'), # 透明に設定
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+
+        # 2. 資産額を表すバー
+        fig.add_trace(go.Bar(
+            y=[tier_category],
+            x=[bar_width],
+            orientation='h',
+            name=tier['name'],
+            text=f'¥{tier["value"]:,}', # バー上に金額を表示
+            textposition='inside',
+            insidetextanchor='middle',
+            marker=dict(color=tier['color']),
+            customdata=[[tier['name'], tier['value'] / total_assets]],
+            hovertemplate = 
+                '<b>%{customdata[0]}</b>'+
+                '<br>Assets: ¥%{x:,}'+
+                '<br>Ratio: %{customdata[1]:.1f}%<extra></extra>',
+            
+        ))
+
+    # 積み上げ棒グラフとして結合
+    fig.update_layout(barmode='stack')
+    fig.update_traces(
+        textposition='auto',
+        textfont=dict(
+            family="Arial, sans-serif", # 任意のフォントファミリーを指定
+            size=14,                     # 任意のサイズを指定
+            color="white"                # テキストの色を指定（背景色に応じて）
+        ),
+    )
+
+    fig.update_layout(
+        xaxis=dict(
+            range=[total_assets*0.2, total_assets*0.8], # 最大値の115%までX軸の範囲を広げる
+            showgrid=False,
+            zeroline=False,
+            showticklabels=False,  # X軸ラベルを非表示
+        ),
+        yaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            autorange="reversed", # Tier 4を上にするため反転
+        ),
+        legend=dict(
+            x=0.02, 
+            y=0.98,   
+            xanchor='left',
+            yanchor='top',
+            xref="container",yref="container",
+        ),
+        
+        margin=dict(r=0, l=60, t=90, b=10), 
+    )
+
+    #fig.show()
+    fig_dict = fig.to_dict()
+    json_str = json.dumps(fig_dict)
+    return json_str
 
 def _build_true_risk_exposure_flow(df_collection):
     pass
@@ -442,7 +539,7 @@ if __name__ == "__main__":
     #print(_build_summary(df))
     #_build_asset_tree_map(df)
     _build_target_deviation(df)
-    _build_portfolio_efficiency_map(df)
+    #_build_portfolio_efficiency_map(df)
     _build_liquidity_pyramid(df)
     _build_true_risk_exposure_flow(df)
     _build_rebalancing_workbench(df)
