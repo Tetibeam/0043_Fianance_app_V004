@@ -217,6 +217,7 @@ def _build_asset_tree_map(df_collection):
         "暗号資産":"Digital Assets",
         "円建社債":"Fixed Income",
         "国内株式":"Domestic Equity",
+        "外貨普通預金":"Foreign Currency",
     })
 
     # グラフ生成
