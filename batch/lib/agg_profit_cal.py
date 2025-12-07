@@ -13,8 +13,8 @@ def set_unrealized_profit(df):
     mask = df["取得価格"].notna()&\
         (df["取得価格"] != 0)&\
         df["資産サブタイプ"].isin(asset_sub_type)&\
-        ~df["金融機関口座"].str.contains("ALTERNA",na=False)&\
         ~df["資産名"].str.contains("スミセイDCたのしみ年金10年",na=False)
+##~df["金融機関口座"].str.contains("ALTERNA",na=False)&\
 
     df_unrealized = (
         df[mask]
