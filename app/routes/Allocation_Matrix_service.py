@@ -36,6 +36,7 @@ def _read_table_from_db():
     df_asset_profit_latest = query_table_aggregated(
         table_name="asset_profit_detail",
         aggregates={
+            "date": "MAX",
             "資産サブタイプ": "MAX",
             "資産額": "MAX",
         },
@@ -45,6 +46,7 @@ def _read_table_from_db():
         filters=None,
         order_by=["資産名"]
     )
+    #print(df_asset_profit_latest)
 
     df_asset_sub_type_attribute = get_raw_table("asset_sub_type_attribute")
 
@@ -496,6 +498,7 @@ def _build_true_risk_exposure_flow(df_collection):
     pass
 
 def _build_liquidity_horizon(df_collection_latest, df_asset_attribute):
+    # データフレーム作成
     df_ref = df_asset_attribute.copy()
     df = df_ref[df_ref["償還日"].notna()][["資産名","資産サブタイプ","償還日"]].set_index("資産名")
     df_assets = (
@@ -504,6 +507,53 @@ def _build_liquidity_horizon(df_collection_latest, df_asset_attribute):
         )][["資産名","資産額"]].set_index("資産名")
     )
     df = pd.merge(df, df_assets, left_index=True, right_index=True)
+    df.reset_index(names="資産名",inplace=True)
+
+    latest = df_collection_latest["date"].max()
+    mask = (df["償還日"] >= latest) & (df["償還日"] <= latest + pd.DateOffset(months=12))
+    df = df[mask]
+    #print(df)
+    #print(df.dtypes)
+
+    # グラフ作成
+    df_monthly = df.groupby([pd.Grouper(key='償還日', freq='ME'), '資産サブタイプ'])['資産額'].sum().reset_index()
+    all_months = pd.date_range(
+        start=df_monthly['償還日'].min(), 
+        end=df_monthly['償還日'].max(), 
+        freq='MS'
+    )
+
+    sub_types = df_monthly["資産サブタイプ"].unique().tolist()
+    
+    fig = go.Figure()
+    for sub_type in sub_types:
+        df_sub = df_monthly[df_monthly['資産サブタイプ'] == sub_type].copy()
+        df_sub = df_sub.groupby('償還日')[['資産額']].sum()
+        df_sub = df_sub.reindex(all_months, fill_value=0).reset_index()
+        df_sub.rename(columns={'index': '償還日'}, inplace=True)
+        print(df_sub)
+        fig.add_trace(go.Bar(
+            x = df_sub['償還日'].dt.strftime("%Y/%m").tolist(),
+            y=df_sub['資産額'].astype(int).tolist(),
+            name=sub_type,
+            #marker_color=sub_type,
+            #customdata=df_sub['資産サブタイプ'],
+            #hovertemplate = 
+            #    '<b>%{customdata}</b>'+
+            #    '<br>Date: %{x}'+
+            #    '<br>Assets: ¥%{y:,}<extra></extra>',
+        ))
+    fig = _graph_individual_setting(fig, "償還日", "%Y-%m", "償還額", "¥", "")
+    # metaでID付与
+    fig.update_layout(
+        barmode='stack',
+        meta={"id": "general_balance"}
+    )
+    fig.show()
+    
+    #fig_dict = fig.to_dict()
+    #json_str = json.dumps(fig_dict)
+    #return json_str
 
 
 def build_dashboard_payload(include_graphs: bool = True, include_summary: bool = True) -> Dict[str, Any]:
