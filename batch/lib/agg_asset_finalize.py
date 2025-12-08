@@ -35,7 +35,6 @@ def check_not_registered_columns_before_finalize(df):
 def add_columns(df):
     df_added = df.copy()
     df_added["資産タイプ"] = pd.Series(dtype="object")
-    #df_added["資産カテゴリー"] = pd.Series(dtype="object")
     df_added["資産サブタイプ"] = pd.Series(dtype="object")
     df_added["トータルリターン"] = np.nan
     return df_added
@@ -90,7 +89,6 @@ def fill_missing_others_fast(df):
 
     # mapping dict
     type_map      = df_ref.set_index("資産名")["資産タイプ"]
-    #category_map  = df_ref.set_index("資産名")["資産カテゴリー"]
     subtype_map   = df_ref.set_index("資産名")["資産サブタイプ"]
     account_map   = df_ref.set_index("資産名")["金融機関口座"]
 
@@ -99,7 +97,6 @@ def fill_missing_others_fast(df):
 
     # 更新対象の行だけ map する
     df_filled.loc[mask, "資産タイプ"]      = df_filled.loc[mask, "資産名"].map(type_map)
-    #df_filled.loc[mask, "資産カテゴリー"]  = df_filled.loc[mask, "資産名"].map(category_map)
     df_filled.loc[mask, "資産サブタイプ"]  = df_filled.loc[mask, "資産名"].map(subtype_map)
     df_filled.loc[mask, "金融機関口座"]    = df_filled.loc[mask, "資産名"].map(account_map)
 
@@ -112,12 +109,10 @@ def fill_missing_others(df):
     #display(item_cols)
     for item in item_cols:
         type = df_tmp.loc[df_tmp["資産名"] == item, "資産タイプ"].iloc[0]
-        #category = df_tmp.loc[df_tmp["資産名"] == item, "資産カテゴリー"].iloc[0]
         subtype = df_tmp.loc[df_tmp["資産名"] == item, "資産サブタイプ"].iloc[0]
         #account = df_tmp.loc[df_tmp["資産名"] == item, "金融機関口座"].iloc[0]
 
         df_filled.loc[df["資産名"] == item, "資産タイプ"] = type
-        #df_filled.loc[df["資産名"] == item, "資産カテゴリー"] = category
         df_filled.loc[df["資産名"] == item, "資産サブタイプ"] = subtype
         df_filled.loc[df["資産名"] == item, "金融機関口座"] = subtype
     return df_filled
@@ -138,7 +133,7 @@ def cal_pension(df, df_asset_profit):
 
 @require_columns(["date", "資産額", "取得価格","金融機関口座","資産名"], df_arg_index=0)
 def finalize_clean_data(df, df_asset_profit):
-    # 資産タイプ、資産カテゴリー、資産サブタイプ、トータルリターン列を追加する
+    # 資産タイプ、資産サブタイプ、トータルリターン列を追加する
     df_added = add_columns(df)
 
     # 元ファイルと結合します

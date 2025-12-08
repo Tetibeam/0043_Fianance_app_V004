@@ -13,6 +13,12 @@ from .db_manager import get_engine, get_db_path
 # 3. 例外発生時も DB が壊れない
 
 # ------ 読み込み -------
+def get_raw_table(table):
+    engine = get_engine("finance")
+    with engine.connect() as conn:
+        df = pd.read_sql_table(table, conn)
+    return df
+
 def get_latest_date():
     sql = "SELECT MAX(date) AS latest_date FROM asset_profit_detail"
     engine = get_engine("finance")

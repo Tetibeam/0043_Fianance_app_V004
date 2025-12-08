@@ -1,6 +1,7 @@
 from app.utils.data_loader import (
     get_latest_date,
     query_table_aggregated,
+    get_raw_table
 )
 from typing import Dict, Any
 import numpy as np
@@ -21,7 +22,6 @@ def _read_table_from_db():
         table_name="asset_profit_detail",
         aggregates={
             "資産タイプ": "MAX",
-            "資産カテゴリー": "MAX",
             "資産額": "SUM",
             "トータルリターン": "SUM",
             "取得価格": "SUM"
@@ -32,20 +32,9 @@ def _read_table_from_db():
         filters=None,
         order_by=["date"]
     )
-    #print(df_asset_profit)
-    df_liquidity = query_table_aggregated(
-        table_name="asset_profit_detail",
-        aggregates={
-            "資産額": "SUM",
-        },
-        group_by=["資産カテゴリー"],
-        start_date=latest_date,
-        end_date=latest_date,
-        filters=None,
-        order_by=["資産カテゴリー"]        
-    )
-    #print(df)
-    return df_asset_profit, df_liquidity
+    df_asset_sub_type_attribute = get_raw_table("asset_sub_type_attribute")
+
+    return df_asset_profit, df_asset_sub_type_attribute
 
 def _make_vector(current, previous):
     if previous == 0:
@@ -172,7 +161,7 @@ def _graph_individual_setting(fig, x_title, x_tickformat, y_title, y_tickprefix,
     )
     return fig
 
-def _build_asset_tree_map(df_collection):
+def _build_asset_tree_map(df_collection, df_asset_sub_type_attribute):
     #データフレーム作成
     latest = df_collection["date"].max()
     df = df_collection[df_collection["date"] == latest][["資産サブタイプ","資産タイプ","資産額"]]
@@ -193,32 +182,13 @@ def _build_asset_tree_map(df_collection):
     })
     df_tree = pd.concat([df_tree, pd.DataFrame(list)], ignore_index=True)
 
-    df_tree["parents"] = df_tree["parents"].replace({
-        "安全資産":"Defensive Assets",
-        "リスク資産":"Aggressive Growth Assets",
-        "総資産":"Gross Assets",
-    })
+    jp_to_en = dict(zip(
+        df_asset_sub_type_attribute["資産タイプとサブタイプ"],
+        df_asset_sub_type_attribute["英語名"]
+    ))
 
-    df_tree["labels"] = df_tree["labels"].replace({
-        "総資産":"Gross Assets",
-        "安全資産":"Defensive Assets",
-        "リスク資産":"Aggressive Growth Assets",
-        "現金/電子マネー":"Cash",
-        "普通預金/MRF":"Cash Reserves",
-        "定期預金/仕組預金":"Time Deposits",
-        "確定年金":"Real Estate",
-        "日本国債":"Securities",
-        "預入金":"Cash Deposits",
-        "ポイント":"Loyalty Rewards",
-        "投資信託":"Investment Trust",
-        "ソーシャルレンディング":"P2P Lending",
-        "セキュリティートークン":"Tokenized Real Estate",
-        "確定拠出年金":"Defined Contribution Plan",
-        "暗号資産":"Digital Assets",
-        "円建社債":"Fixed Income",
-        "国内株式":"Domestic Equity",
-        "外貨普通預金":"Foreign Currency",
-    })
+    df_tree["parents"] = df_tree["parents"].replace(jp_to_en)
+    df_tree["labels"] = df_tree["labels"].replace(jp_to_en)
 
     # グラフ生成
     labels = df_tree["labels"].tolist()
@@ -323,10 +293,10 @@ def _set_sharp_ratio(df_map, df, latest, one_year_ago):
    
     return df_sub
 
-def _build_portfolio_efficiency_map(df_collection):
+def _build_portfolio_efficiency_map(df_collection, df_asset_sub_type_attribute):
     # データフレーム作成
     df = df_collection.copy()
-    df.drop(df[df["資産サブタイプ"] == "住宅ローン"].index, inplace=True)
+    df.drop(df[df["資産タイプ"] == "負債"].index, inplace=True)
     df_map = pd.DataFrame(index=df["資産サブタイプ"].unique(), columns=["リターン","シャープレシオ","資産額"])
 
     # 厳密に1年間にフィルタ
@@ -338,24 +308,13 @@ def _build_portfolio_efficiency_map(df_collection):
     df_map = _set_return(df_map, df, latest, one_year_ago)
     df_map = _set_sharp_ratio(df_map, df, latest, one_year_ago)
 
+    jp_to_en = dict(zip(
+        df_asset_sub_type_attribute["資産タイプとサブタイプ"],
+        df_asset_sub_type_attribute["英語名"]
+    ))
+
     # 名称変換
-    df_map.index = df_map.index.map({
-        "現金/電子マネー":"Cash",
-        "普通預金/MRF":"Cash Reserves",
-        "定期預金/仕組預金":"Time Deposits",
-        "確定年金":"Real Estate",
-        "日本国債":"Securities",
-        "預入金":"Cash Deposits",
-        "ポイント":"Loyalty Rewards",
-        "投資信託":"Investment Trust",
-        "ソーシャルレンディング":"P2P Lending",
-        "セキュリティートークン":"Tokenized Real Estate",
-        "確定拠出年金":"Defined Contribution Plan",
-        "暗号資産":"Digital Assets",
-        "円建社債":"Fixed Income",
-        "国内株式":"Domestic Equity",
-        "外貨普通預金":"Foreign Currency",
-    })
+    df_map.index = df_map.index.map(jp_to_en)
 
     # グラフ生成
     df_map.reset_index(names=["資産サブタイプ"], inplace=True)
@@ -408,21 +367,32 @@ def _build_portfolio_efficiency_map(df_collection):
     json_str = json.dumps(fig_dict)
     return json_str
 
-def _build_liquidity_pyramid(df_liquidity):
+def _build_liquidity_pyramid(df_collection, df_asset_sub_type_attribute):
     #データの生成
-    df = df_liquidity.copy()
+    latest = df_collection["date"].max()
+    df = df_collection[df_collection["date"] == latest]
+    df_ref = df_asset_sub_type_attribute.copy()
+
     tiers = [
-        {'name': 'Tier 4: Long-Term / Illiquid Assets (Defined Contribution etc.)',
-        'value': df[df["資産カテゴリー"] == "非流動性資産"]["資産額"].astype(int).iloc[0], 'color': '#5AB4EA'},
+        {'name': 'Tier 4: Long-Term / Illiquid Assets (Defined Contribution etc.)','color': '#5AB4EA',
+        'value': df[df["資産サブタイプ"].isin(
+            df_ref[df_ref["流動性"] == "非流動性資産"]["資産タイプとサブタイプ"].tolist()
+        )]["資産額"].sum().astype(int) },
 
         {'name': 'Tier 3: Committed / Frictional Capital (Investment Trust etc.)',
-        'value': df[df["資産カテゴリー"] == "市場性有価証券"]["資産額"].astype(int).iloc[0], 'color': '#377EB8'},
+        'value': df[df["資産サブタイプ"].isin(
+            df_ref[df_ref["流動性"] == "市場性有価証券"]["資産タイプとサブタイプ"].tolist()
+        )]["資産額"].sum().astype(int), 'color': '#377EB8'},
         
         {'name': 'Tier 2: Accessible Investment Buffer (Time Deposits etc.)',
-        'value': df[df["資産カテゴリー"] == "市場確実性資産"]["資産額"].astype(int).iloc[0], 'color': '#1F4E79'},
+        'value': df[df["資産サブタイプ"].isin(
+            df_ref[df_ref["流動性"] == "市場確実性資産"]["資産タイプとサブタイプ"].tolist()
+        )]["資産額"].sum().astype(int), 'color': '#1F4E79'},
         
         {'name': 'Tier 1: Immediate Defense Capital (Cash Reserves etc.)',
-        'value': df[df["資産カテゴリー"] == "即時流動性資産"]["資産額"].astype(int).iloc[0], 'color': '#002D62'}
+        'value': df[df["資産サブタイプ"].isin(
+            df_ref[df_ref["流動性"] == "即時流動性資産"]["資産タイプとサブタイプ"].tolist()
+        )]["資産額"].sum().astype(int), 'color': '#002D62'}
     ]
     total_assets = sum(t['value'] for t in tiers)
 
@@ -514,7 +484,7 @@ def _build_liquidity_horizon(df_collection):
 
 def build_dashboard_payload(include_graphs: bool = True, include_summary: bool = True) -> Dict[str, Any]:
     # DBから必要データを読み込みます
-    df_collection, df_liquidity = _read_table_from_db()
+    df_collection, df_asset_sub_type_attribute = _read_table_from_db()
 
     result = {"ok":True, "summary": {}, "graphs": {}}
 
@@ -525,10 +495,10 @@ def build_dashboard_payload(include_graphs: bool = True, include_summary: bool =
         _make_graph_template()
 
         result["graphs"] = {
-            "asset_tree_map": _build_asset_tree_map(df_collection),
+            "asset_tree_map": _build_asset_tree_map(df_collection,df_asset_sub_type_attribute),
             "target_deviation": _build_target_deviation(df_collection),
-            "portfolio_efficiency_map": _build_portfolio_efficiency_map(df_collection),
-            "liquidity_pyramid": _build_liquidity_pyramid(df_liquidity),
+            "portfolio_efficiency_map": _build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute),
+            "liquidity_pyramid": _build_liquidity_pyramid(df_collection,df_asset_sub_type_attribute),
             "true_risk_exposure_flow": _build_true_risk_exposure_flow(df_collection),
             "liquidity_horizon": _build_liquidity_horizon(df_collection)
         }
@@ -544,12 +514,11 @@ if __name__ == "__main__":
     # DBマネージャーの初期化
     from app.utils.db_manager import init_db
     init_db(base_dir)
-    df_collection, df_liquidity = _read_table_from_db()
-    #print(df)
-    #print(_build_summary(df))
-    #_build_asset_tree_map(df_collection)
-    _build_target_deviation(df_collection)
-    _build_portfolio_efficiency_map(df_collection)
-    _build_liquidity_pyramid(df_liquidity)
-    _build_true_risk_exposure_flow(df_collection)
-    _build_liquidity_horizon(df_collection)
+    df_collection,df_asset_sub_type_attribute = _read_table_from_db()
+    #print(_build_summary(df_collection))
+    _build_asset_tree_map(df_collection,df_asset_sub_type_attribute)
+    #_build_target_deviation(df_collection)
+    _build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute)
+    _build_liquidity_pyramid(df_collection,df_asset_sub_type_attribute)
+    #_build_true_risk_exposure_flow(df_collection)
+    #_build_liquidity_horizon(df_collection)

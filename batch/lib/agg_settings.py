@@ -5,6 +5,8 @@ PATH_ASSET_ATTRIBUTE = "G:/マイドライブ/AssetManager/total/parameter/asset
 PATH_ASSET_ATTRIBUTE_PARQUET = "G:/マイドライブ/AssetManager/total/parameter/asset_attribute.parquet"
 PATH_BALANCE_ATTRIBUTE = "G:/マイドライブ/AssetManager/total/parameter/balance_attribute.parquet"
 PATH_OFFSET_UNREALIZED = "G:/マイドライブ/AssetManager/total/parameter/offset_unrealized.parquet"
+PATH_ASSET_SUB_TYPE_ATTRIBUTE = "G:/マイドライブ/AssetManager/total/parameter/asset_sub_type_attribute.csv"
+PATH_ASSET_SUB_TYPE_ATTRIBUTE_PARQUET = "G:/マイドライブ/AssetManager/total/parameter/asset_sub_type_attribute.parquet"
 
 # Master Data Path
 PATH_ASSET_PROFIT_DETAIL = "G:/マイドライブ/AssetManager/total/output/asset_detail.parquet"
