@@ -1,5 +1,5 @@
 from ..lib.agg_settings import (
-    PATH_ASSET_PROFIT_DETAIL, PATH_ASSET_TYPE_AND_CATEGORY, PATH_ASSET_RAW_DATA,
+    PATH_ASSET_PROFIT_DETAIL, PATH_ASSET_ATTRIBUTE, PATH_ASSET_RAW_DATA,
     PATH_ASSET_PROFIT_DETAIL_TEST
 )
 from ..lib.file_io import load_parquet, load_csv, save_parquet
@@ -16,7 +16,7 @@ def make_asset_main():
 
     # ---- load phase ----
     df_asset_profit = load_parquet(PATH_ASSET_PROFIT_DETAIL)
-    urds.df_asset_type_and_category = load_csv(PATH_ASSET_TYPE_AND_CATEGORY)
+    urds.df_asset_attribute = load_csv(PATH_ASSET_ATTRIBUTE)
 
     # for development only
     df_asset_profit = df_asset_profit[df_asset_profit["date"] <= pd.to_datetime("2025-10-28")]

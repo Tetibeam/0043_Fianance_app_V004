@@ -73,7 +73,7 @@ def _make_asset_cache_aggregated(df_asset_profit, start_date, end_date, period_t
     df = _filter_by_date(df_asset_profit, start_date, end_date)
     agg_dict = {
         "資産タイプ": 'first',
-        "資産カテゴリー": 'first',
+        #"資産カテゴリー": 'first',
         "資産サブタイプ": 'first',
         "金融機関口座": 'first',
         "資産額": 'last',

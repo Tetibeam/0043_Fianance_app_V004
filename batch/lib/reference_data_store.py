@@ -1,8 +1,8 @@
 # 原則、メインモジュールでファイルから読み込む
-df_balance_type_and_category = None
+df_balance_attribute = None
 df_balance_target = None
 df_offset_unrealized = None
-df_asset_type_and_category = None
+df_asset_attribute = None
 
 df_target_balance_parameter = None
 df_target_rate = None

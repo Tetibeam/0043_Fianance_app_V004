@@ -4,7 +4,7 @@ from ..lib import reference_data_store as urds
 
 from ..lib.agg_init import get_latest_date_agg, load_balance_raw_file
 from ..lib.agg_settings import (
-    PATH_BALANCE_TYPE_AND_CATEGORY, PATH_ASSET_PROFIT_DETAIL, PATH_BALANCE_RAW_DATA,
+    PATH_BALANCE_ATTRIBUTE, PATH_ASSET_PROFIT_DETAIL, PATH_BALANCE_RAW_DATA,
     PATH_BALANCE_DETAIL, PATH_ASSET_PROFIT_DETAIL_TEST
 )
 from ..lib.target_settings import PATH_TARGET_BALANCE
@@ -17,7 +17,7 @@ import pandas as pd
 from ..lib.exceptions import DataLoadError
 
 PATHS = {
-    "balance_type_category": PATH_BALANCE_TYPE_AND_CATEGORY,
+    "balance_attribute": PATH_BALANCE_ATTRIBUTE,
     "asset_profit": PATH_ASSET_PROFIT_DETAIL_TEST,
     "balance_target": PATH_TARGET_BALANCE
 }
@@ -28,12 +28,12 @@ def make_balance_main():
     try:
         # ---- load masters safely ----
         masters = safe_load_master({
-            "balance_type_category": lambda: load_parquet(PATHS["balance_type_category"]),
+            "balance_attribute": lambda: load_parquet(PATHS["balance_attribute"]),
             "asset_profit": lambda: load_parquet(PATHS["asset_profit"]),
             "balance_target": lambda: load_parquet(PATHS["balance_target"]),
         })
 
-        urds.df_balance_type_and_category = masters["balance_type_category"]
+        urds.df_balance_attribute = masters["balance_attribute"]
         df_asset_profit = masters["asset_profit"]
         urds.df_balance_target = masters["balance_target"]
 

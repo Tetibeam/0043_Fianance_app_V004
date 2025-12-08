@@ -22,7 +22,7 @@ def add_type_and_category(df):
     df["収支タイプ"] = pd.Series(dtype="object")
     df["収支カテゴリー"] = pd.Series(dtype="object")
     item_cols = df["収支項目"].unique().tolist()
-    df_tmp = urds.df_balance_type_and_category
+    df_tmp = urds.df_balance_attribute
 
     for item in item_cols:
         type = df_tmp.loc[df_tmp["収支項目"] == item, "収支タイプ"].iloc[0]

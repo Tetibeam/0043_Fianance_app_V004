@@ -18,7 +18,7 @@ API_BASE = os.environ.get("API_BASE_URL", "http://localhost:5000")
 # データソース
 from batch.lib.agg_settings import (
     PATH_ASSET_PROFIT_DETAIL_TEST2, PATH_BALANCE_DETAIL,
-    PATH_ASSET_TYPE_AND_CATEGORY, PATH_ASSET_TYPE_AND_CATEGORY_PARQUET
+    PATH_ASSET_ATTRIBUTE, PATH_ASSET_ATTRIBUTE_PARQUET
 )
 from batch.lib.target_settings import (
     PATH_TARGET_ASSET_PROFIT, PATH_TARGET_PARAMETER, PATH_TARGET_RATE
@@ -77,9 +77,9 @@ def update_db():
 
         try:
             # 資産クラス表のCSVを一度parquetに変換する
-            df = load_csv(PATH_ASSET_TYPE_AND_CATEGORY)
+            df = load_csv(PATH_ASSET_ATTRIBUTE)
             df["償還日"] = pd.to_datetime(df["償還日"])
-            save_parquet(df, PATH_ASSET_TYPE_AND_CATEGORY_PARQUET)
+            save_parquet(df, PATH_ASSET_ATTRIBUTE_PARQUET)
             
             # with 文で複数ファイルを同時に開く
             with open(PATH_ASSET_PROFIT_DETAIL_TEST2, "rb") as asset_profit_detail,\
@@ -87,7 +87,7 @@ def update_db():
                 open(PATH_TARGET_ASSET_PROFIT, "rb") as target_asset_profit,\
                 open(PATH_TARGET_PARAMETER, "rb") as target_parameter,\
                 open(PATH_TARGET_RATE, "rb") as target_rate,\
-                open(PATH_ASSET_TYPE_AND_CATEGORY_PARQUET, "rb") as asset_type_and_category:
+                open(PATH_ASSET_ATTRIBUTE_PARQUET, "rb") as asset_attribute:
 
                 files = {
                     "file_asset_profit_detail": ("file_asset_profit_detail", asset_profit_detail, "application/octet-stream"),
@@ -95,7 +95,7 @@ def update_db():
                     "file_target_asset_profit": ("file_target_asset_profit", target_asset_profit, "application/octet-stream"),
                     "file_target_parameter": ("file_target_parameter", target_parameter, "application/octet-stream"),
                     "file_target_rate": ("file_target_rate", target_rate, "application/octet-stream"),
-                    "file_asset_type_and_category": ("file_asset_type_and_category",asset_type_and_category, "application/octet-stream"),
+                    "file_asset_attribute": ("file_asset_attribute",asset_attribute, "application/octet-stream"),
                 }
             
                 resp = requests.post(upload_url, files=files, timeout=30)

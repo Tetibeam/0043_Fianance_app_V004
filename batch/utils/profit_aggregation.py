@@ -5,7 +5,7 @@ from ..lib.exceptions import DataLoadError
 
 from ..lib.agg_settings import (
     PATH_ASSET_PROFIT_DETAIL, PATH_OFFSET_UNREALIZED, 
-    PATH_BALANCE_RAW_DATA,PATH_ASSET_TYPE_AND_CATEGORY, PATH_BALANCE_DETAIL,
+    PATH_BALANCE_RAW_DATA,PATH_ASSET_ATTRIBUTE, PATH_BALANCE_DETAIL,
     PATH_ASSET_PROFIT_DETAIL_TEST, PATH_ASSET_PROFIT_DETAIL_TEST2
 )
 from ..lib.agg_profit_cal import (
@@ -18,7 +18,7 @@ from ..lib.agg_init import load_balance_raw_file, get_latest_date_agg
 import pandas as pd
 
 PATHS = {
-    "asset_type_and_category": PATH_ASSET_TYPE_AND_CATEGORY,
+    "asset_attribute": PATH_ASSET_ATTRIBUTE,
     "offset_unrealized": PATH_OFFSET_UNREALIZED,
     "asset_profit": PATH_ASSET_PROFIT_DETAIL_TEST,
     "balance": PATH_BALANCE_DETAIL
@@ -31,12 +31,12 @@ def make_profit_main():
     try:
         # ---- load masters safely ----
         masters = safe_load_master({
-            "asset_type_and_category": lambda: load_csv(PATHS["asset_type_and_category"]),
+            "asset_attribute": lambda: load_csv(PATHS["asset_attribute"]),
             "offset_unrealized": lambda: load_parquet(PATHS["offset_unrealized"]),
             "asset_profit": lambda: load_parquet(PATHS["asset_profit"]),
             "balance": lambda: load_parquet(PATHS["balance"]),
         })
-        urds.df_asset_type_and_category = masters["asset_type_and_category"]
+        urds.df_asset_attribute = masters["asset_attribute"]
         urds.df_offset_unrealized = masters["offset_unrealized"]
         df_asset_profit = masters["asset_profit"]
         df_balance = masters["balance"]

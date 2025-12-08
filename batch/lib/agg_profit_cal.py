@@ -45,19 +45,19 @@ def _get_asset_name(accounts, asset_name_key, sub_type_filters=None):
 
     # フィルタ条件を動的に作る
     if sub_type_filters:
-        mask_sub_type = urds.df_asset_type_and_category["資産サブタイプ"].isin(sub_type_filters)
+        mask_sub_type = urds.df_asset_attribute["資産サブタイプ"].isin(sub_type_filters)
     else:
         mask_sub_type = True
-    mask_name = mask_sub_type & urds.df_asset_type_and_category["資産名"].str.contains(asset_name_key, na=False)
+    mask_name = mask_sub_type & urds.df_asset_attribute["資産名"].str.contains(asset_name_key, na=False)
 
     if pd.isna(accounts) or not isinstance(accounts, str) or accounts.strip() == "":
         # 銀行名が空 ⇒ 金融機関口座を絞り込まない（全件対象）
         mask_account = True
     else:
-        mask_account = urds.df_asset_type_and_category["金融機関口座"].str.contains(accounts, na=False)
+        mask_account = urds.df_asset_attribute["金融機関口座"].str.contains(accounts, na=False)
 
     # 条件適用
-    df_sub = urds.df_asset_type_and_category[mask_account & mask_name]
+    df_sub = urds.df_asset_attribute[mask_account & mask_name]
 
     # 結果
     if not df_sub.empty:
@@ -246,7 +246,7 @@ def set_realized_dividend(df_balance_raw):
 def _set_realized_capital(df_asset_profit,df_balance_raw):
     # 対象資産名
     target_sub_type = ["国内株式","投資信託","セキュリティートークン"]
-    df = urds.df_asset_type_and_category.copy()
+    df = urds.df_asset_attribute.copy()
     mask = df["資産サブタイプ"].isin(target_sub_type) &\
         (df["金融機関口座"] != "ALTERNA") &\
         (df["金融機関口座"] != "FOLIO")
@@ -305,7 +305,7 @@ def _prepare_in_out(df_balance_raw, account):
         return df_in
 
 def set_realized_cloud_funds(df_asset_profit, start_date, end_date, df_balance_raw):
-    df_keys = urds.df_asset_type_and_category.copy()
+    df_keys = urds.df_asset_attribute.copy()
     df_values = df_asset_profit.copy()
 
     #sub_type_list = ["ソーシャルレンディング", "セキュリティートークン"]

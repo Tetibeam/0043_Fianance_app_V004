@@ -310,8 +310,8 @@ def get_account_name_from_table(df):
     mask = df_processed["金融機関口座"].isna()
     for idx in df_processed[mask].index:
         asset_name = df_processed.loc[idx, "資産名"]
-        match = urds.df_asset_type_and_category[
-            urds.df_asset_type_and_category["資産名"].str.contains(asset_name, na=False)
+        match = urds.df_asset_attribute[
+            urds.df_asset_attribute["資産名"].str.contains(asset_name, na=False)
         ]
         if not match.empty:
             # 最初の一致を補完
@@ -371,7 +371,7 @@ def unify_asset_name(df):
 def register_nothing_date_asset_by_zero(df):
     # 欠けている資産はゼロで登録する
     dfs=[]
-    asset_name_list_ref = urds.df_asset_type_and_category["資産名"].to_list()
+    asset_name_list_ref = urds.df_asset_attribute["資産名"].to_list()
     for date in df["date"].unique():
         asset_name_list = df[df["date"] == date]["資産名"].to_list()
         diff_list = list(set(asset_name_list_ref) - set(asset_name_list))

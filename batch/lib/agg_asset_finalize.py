@@ -8,12 +8,12 @@ from .decorator import require_columns
 from .main_helper import safe_pipe
 from .file_io import save_csv
 import subprocess
-from .agg_settings import PATH_ASSET_TYPE_AND_CATEGORY
+from .agg_settings import PATH_ASSET_ATTRIBUTE
 
 def check_not_registered_columns_before_finalize(df):
     latest_date = df["date"].max()
     asset_name_list_latest = df[df["date"] == latest_date]["資産名"].to_list()
-    master_df = urds.df_asset_type_and_category
+    master_df = urds.df_asset_attribute
     asset_name_list_ref = master_df["資産名"].to_list()
 
     diff_list = list(set(asset_name_list_latest) - set(asset_name_list_ref))
@@ -21,21 +21,21 @@ def check_not_registered_columns_before_finalize(df):
         try:
             new_rows = pd.DataFrame({"資産名": diff_list})
             updated_master_df = pd.concat([master_df, new_rows], ignore_index=True)
-            urds.df_asset_type_and_category = updated_master_df
+            urds.df_asset_attribute = updated_master_df
 
-            save_csv(updated_master_df, PATH_ASSET_TYPE_AND_CATEGORY)
-            subprocess.Popen(['start', '', PATH_ASSET_TYPE_AND_CATEGORY], shell=True)
+            save_csv(updated_master_df, PATH_ASSET_ATTRIBUTE)
+            subprocess.Popen(['start', '', PATH_ASSET_ATTRIBUTE], shell=True)
         except Exception as e:
             print(f"マスタファイルを開けませんでした: {e}")
         raise ValueError(
             f"以下の資産名がマスタ未登録です: {diff_list}。"
-            "マスタの資産タイプ,資産カテゴリー,資産サブタイプ、データを修正してください。"
+            "マスタのデータを修正してください。"
         )
 
 def add_columns(df):
     df_added = df.copy()
     df_added["資産タイプ"] = pd.Series(dtype="object")
-    df_added["資産カテゴリー"] = pd.Series(dtype="object")
+    #df_added["資産カテゴリー"] = pd.Series(dtype="object")
     df_added["資産サブタイプ"] = pd.Series(dtype="object")
     df_added["トータルリターン"] = np.nan
     return df_added
@@ -66,7 +66,7 @@ def fill_missing_dates_forward(df, df_asset_profit):
 def fill_missing_asset_name(df, df_asset_profit):
     df_data = df.copy()
     df_data.reset_index(drop=True, inplace=True)
-    df_ref = urds.df_asset_type_and_category.copy()
+    df_ref = urds.df_asset_attribute.copy()
 
     end_date = df_asset_profit["date"].max()
     dfs = []
@@ -76,7 +76,7 @@ def fill_missing_asset_name(df, df_asset_profit):
         diff_list = list(set(asset_list_ref) - set(asset_list_data))
         df_add = pd.DataFrame({\
             "date": date,"資産名": diff_list,\
-            "資産タイプ":np.nan,"資産カテゴリー":np.nan,"資産サブタイプ":np.nan,\
+            "資産タイプ":np.nan,"資産サブタイプ":np.nan,\
             "金融機関口座":np.nan,"資産額": 0.0,"トータルリターン":np.nan,\
             "含み損益":np.nan,"実現損益":np.nan,"取得価格":0.0})
         dfs.append(df_add)
@@ -86,11 +86,11 @@ def fill_missing_asset_name(df, df_asset_profit):
 
 def fill_missing_others_fast(df):
     df_filled = df.copy()
-    df_ref = urds.df_asset_type_and_category
+    df_ref = urds.df_asset_attribute
 
     # mapping dict
     type_map      = df_ref.set_index("資産名")["資産タイプ"]
-    category_map  = df_ref.set_index("資産名")["資産カテゴリー"]
+    #category_map  = df_ref.set_index("資産名")["資産カテゴリー"]
     subtype_map   = df_ref.set_index("資産名")["資産サブタイプ"]
     account_map   = df_ref.set_index("資産名")["金融機関口座"]
 
@@ -99,7 +99,7 @@ def fill_missing_others_fast(df):
 
     # 更新対象の行だけ map する
     df_filled.loc[mask, "資産タイプ"]      = df_filled.loc[mask, "資産名"].map(type_map)
-    df_filled.loc[mask, "資産カテゴリー"]  = df_filled.loc[mask, "資産名"].map(category_map)
+    #df_filled.loc[mask, "資産カテゴリー"]  = df_filled.loc[mask, "資産名"].map(category_map)
     df_filled.loc[mask, "資産サブタイプ"]  = df_filled.loc[mask, "資産名"].map(subtype_map)
     df_filled.loc[mask, "金融機関口座"]    = df_filled.loc[mask, "資産名"].map(account_map)
 
@@ -108,16 +108,16 @@ def fill_missing_others_fast(df):
 def fill_missing_others(df):
     df_filled = df.copy()
     item_cols = df_filled["資産名"].dropna().unique().tolist()
-    df_tmp = urds.df_asset_type_and_category
+    df_tmp = urds.df_asset_attribute
     #display(item_cols)
     for item in item_cols:
         type = df_tmp.loc[df_tmp["資産名"] == item, "資産タイプ"].iloc[0]
-        category = df_tmp.loc[df_tmp["資産名"] == item, "資産カテゴリー"].iloc[0]
+        #category = df_tmp.loc[df_tmp["資産名"] == item, "資産カテゴリー"].iloc[0]
         subtype = df_tmp.loc[df_tmp["資産名"] == item, "資産サブタイプ"].iloc[0]
-        account = df_tmp.loc[df_tmp["資産名"] == item, "金融機関口座"].iloc[0]
+        #account = df_tmp.loc[df_tmp["資産名"] == item, "金融機関口座"].iloc[0]
 
         df_filled.loc[df["資産名"] == item, "資産タイプ"] = type
-        df_filled.loc[df["資産名"] == item, "資産カテゴリー"] = category
+        #df_filled.loc[df["資産名"] == item, "資産カテゴリー"] = category
         df_filled.loc[df["資産名"] == item, "資産サブタイプ"] = subtype
         df_filled.loc[df["資産名"] == item, "金融機関口座"] = subtype
     return df_filled
