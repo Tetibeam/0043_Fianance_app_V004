@@ -110,7 +110,7 @@ def _build_summary(df_collection) -> Dict[str, float]:
         total_asset_one_month_ago*-1
     )
 
-    latest_str = latest.strftime("%Y/%m/%d")
+    latest_str = latest.strftime("%y/%m/%d")
     return {
         "latest_date": latest_str,
         "active_growth_capital": round(active_growth_capital*100,1),
@@ -533,7 +533,7 @@ def _build_liquidity_horizon(df_collection_latest, df_asset_attribute):
         df_sub.rename(columns={'index': '償還日'}, inplace=True)
         print(df_sub)
         fig.add_trace(go.Bar(
-            x = df_sub['償還日'].dt.strftime("%Y/%m").tolist(),
+            x = df_sub['償還日'].dt.strftime("%y/%m").tolist(),
             y=df_sub['資産額'].astype(int).tolist(),
             name=sub_type,
             #marker_color=sub_type,
@@ -543,7 +543,7 @@ def _build_liquidity_horizon(df_collection_latest, df_asset_attribute):
             #    '<br>Date: %{x}'+
             #    '<br>Assets: ¥%{y:,}<extra></extra>',
         ))
-    fig = _graph_individual_setting(fig, "償還日", "%Y-%m", "償還額", "¥", "")
+    fig = _graph_individual_setting(fig, "償還日", "%y-%m", "償還額", "¥", "")
     # metaでID付与
     fig.update_layout(
         barmode='stack',
@@ -555,10 +555,70 @@ def _build_liquidity_horizon(df_collection_latest, df_asset_attribute):
     #json_str = json.dumps(fig_dict)
     #return json_str
 
+def _build_liquidity_horizon(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute):
+    # 資産名-資産サブタイプ-償還日-資産額のマスターデータフレーム作成
+    df = df_asset_attribute.copy()
+    mask = df["償還日"].notna()
+    df_maturity_date = df[mask][["資産名","資産サブタイプ","償還日"]].reset_index(drop=True)
+    #print(df_maturity_date)
+    df = df_collection_latest.copy()
+    mask = df["資産名"].isin(df_maturity_date["資産名"].tolist())
+    df_assets = df[mask][["資産名","資産額"]].reset_index(drop=True)
+    #print(df_assets)
+    df_master = pd.merge(df_maturity_date.set_index("資産名"), df_assets.set_index("資産名"), on="資産名", how="left")
+    df_master.reset_index(inplace=True)
+    min_day = pd.to_datetime("today").normalize()
+    df_master = df_master[df_master["償還日"] <= min_day + pd.DateOffset(months=12)].reset_index(drop=True)
+    #print(df_master)
+
+    # 月別のまとめてグラフ化
+    df_master['償還日'] = pd.to_datetime(df_master['償還日']).dt.to_period('M').dt.to_timestamp('M')
+    all_months = pd.date_range(start=min_day, end=min_day + pd.DateOffset(months=12), freq="ME")
+    
+    jp_to_en = dict(zip(
+        df_asset_sub_type_attribute["資産タイプとサブタイプ"],
+        df_asset_sub_type_attribute["英語名"]
+    ))
+    df_master["資産サブタイプ"] = df_master["資産サブタイプ"].map(jp_to_en)
+    sub_types = df_master["資産サブタイプ"].unique().tolist()
+    
+    fig = go.Figure()
+    for sub_type in sub_types:
+        df_sub = df_master[df_master["資産サブタイプ"] == sub_type].copy()
+        df_sub = df_sub.groupby('償還日')[['資産額']].sum()
+        df_sub = df_sub.reindex(all_months, fill_value=0)
+        #print(df_sub)
+        x_values = df_sub.index.tolist()
+        y_values = df_sub['資産額'].tolist()
+        fig.add_trace(go.Bar(
+            x=x_values,
+            y=y_values,
+            name=sub_type,
+            customdata=[sub_type]*len(x_values),
+            hovertemplate = 
+                '<b>%{customdata}</b>'+
+                '<br>Assets: ¥%{y:,}'+
+                '<extra></extra>',
+        ))
+    fig = _graph_individual_setting(
+        fig, x_title="償還日",x_tickformat="%y-%m",y_title="償還額", y_tickprefix="¥",y_tickformat=""
+    )
+    fig.update_layout(
+        meta={"id": "liquidity_horizon"},
+        barmode="stack",
+        colorway=px.colors.sequential.Blues[3:],
+        xaxis=dict(
+            range=[min_day-pd.DateOffset(months=1), min_day + pd.DateOffset(months=12)],
+        ),
+    )
+    #fig.show()   
+    fig_dict = fig.to_dict()
+    json_str = json.dumps(fig_dict, default=str)
+    return json_str
 
 def build_dashboard_payload(include_graphs: bool = True, include_summary: bool = True) -> Dict[str, Any]:
     # DBから必要データを読み込みます
-    df_collection, df_asset_sub_type_attribute, df_asset_attribute= _read_table_from_db()
+    df_collection, df_collection_latest, df_asset_sub_type_attribute, df_asset_attribute  = _read_table_from_db()
 
     result = {"ok":True, "summary": {}, "graphs": {}}
 
@@ -574,7 +634,7 @@ def build_dashboard_payload(include_graphs: bool = True, include_summary: bool =
             "portfolio_efficiency_map": _build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute),
             "liquidity_pyramid": _build_liquidity_pyramid(df_collection,df_asset_sub_type_attribute),
             "true_risk_exposure_flow": _build_true_risk_exposure_flow(df_collection),
-            "liquidity_horizon": _build_liquidity_horizon(df_collection, df_asset_attribute)
+            "liquidity_horizon": _build_liquidity_horizon(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute)
         }
     return result
 
@@ -595,4 +655,4 @@ if __name__ == "__main__":
     #_build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute)
     #_build_liquidity_pyramid(df_collection,df_asset_sub_type_attribute)
     #_build_true_risk_exposure_flow(df_collection)
-    _build_liquidity_horizon(df_collection_latest, df_asset_attribute)
+    #_build_liquidity_horizon(df_collection_latest, df_asset_attribute)
