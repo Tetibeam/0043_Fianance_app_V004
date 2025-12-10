@@ -497,47 +497,29 @@ def _build_liquidity_pyramid(df_collection, df_asset_sub_type_attribute):
 def _build_true_risk_exposure_flow(df_collection):
     pass
 
-def _build_liquidity_horizon(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute):
-    df_master = _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute)
-    min_day = pd.to_datetime("today").normalize()
-
-def _build_liquidity_horizon(df_collection_latest, df_asset_attribute):
+def _build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_asset_sub_type_attribute):
     # 資産名 - 資産サブタイプ - 資産額 - 償還日のデータセットを作る
-    df_ref = df_asset_attribute.copy()
-    df = df_ref[df_ref["償還日"].notna()][["資産名","資産サブタイプ","償還日"]]
-    df_assets = (
-        df_collection_latest[df_collection_latest["資産名"].isin(
-            df["資産名"].tolist()
-        )][["資産名","資産額"]]
-    )
-    df.set_index("資産名", inplace=True)
-    df_assets.set_index("資産名", inplace=True)
-    df = pd.merge(df, df_assets, left_index=True, right_index=True)
-    df.reset_index(inplace=True)
+    df_master = _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute)
     
     # 償還日を月毎にする
-    date_range = pd.date_range(start=df["償還日"].min(), end=df["償還日"].max(), freq="M")
-    df.set_index("償還日", inplace=True)
-    df = df.reindex(date_range).agg({
-        "資産名": "first",
-        "資産サブタイプ": "first",
-        "資産額": "sum"
-    }).reset_index()
+    df_monthly = df_master.copy()
+    df_monthly['償還日'] = pd.to_datetime(df_monthly['償還日']).dt.to_period('M').dt.to_timestamp('M')
 
-    # 月別のまとめてグラフ化
-    df_master['償還日'] = pd.to_datetime(df_master['償還日']).dt.to_period('M').dt.to_timestamp('M')
+    # 月別にする
+    min_day = pd.to_datetime("today").normalize()
     all_months = pd.date_range(start=min_day, end=min_day + pd.DateOffset(months=12), freq="ME")
+    # 資産サブタイプを英語にする
+    #jp_to_en = dict(zip(
+    #    df_asset_sub_type_attribute["資産タイプとサブタイプ"],
+    #    df_asset_sub_type_attribute["英語名"]
+    #))
+    #df_monthly["資産サブタイプ"] = df_monthly["資産サブタイプ"].map(jp_to_en)
     
-    jp_to_en = dict(zip(
-        df_asset_sub_type_attribute["資産タイプとサブタイプ"],
-        df_asset_sub_type_attribute["英語名"]
-    ))
-    df_master["資産サブタイプ"] = df_master["資産サブタイプ"].map(jp_to_en)
-    sub_types = df_master["資産サブタイプ"].unique().tolist()
-    
+    # サブタイプごとにグラフを描く
+    sub_types = df_monthly["資産サブタイプ"].unique().tolist()
     fig = go.Figure()
     for sub_type in sub_types:
-        df_sub = df_master[df_master["資産サブタイプ"] == sub_type].copy()
+        df_sub = df_monthly[df_monthly["資産サブタイプ"] == sub_type].copy()
         df_sub = df_sub.groupby('償還日')[['資産額']].sum()
         df_sub = df_sub.reindex(all_months, fill_value=0)
         #print(df_sub)
@@ -591,7 +573,7 @@ def build_dashboard_payload(include_graphs: bool = True, include_summary: bool =
         }
     return result
 
-def _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute):
+def _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute):
     # 資産名-資産サブタイプ-償還日-資産額のマスターデータフレーム作成
     df = df_asset_attribute.copy()
     mask = df["償還日"].notna()
@@ -605,53 +587,43 @@ def _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute):
     df_master.reset_index(inplace=True)
     min_day = pd.to_datetime("today").normalize()
     df_master = df_master[df_master["償還日"] <= min_day + pd.DateOffset(months=12)].reset_index(drop=True)
+    # 資産サブタイプを英語にする
+    jp_to_en = dict(zip(
+        df_asset_sub_type_attribute["資産タイプとサブタイプ"],
+        df_asset_sub_type_attribute["英語名"]
+    ))
+    df_master["資産サブタイプ"] = df_master["資産サブタイプ"].map(jp_to_en)
+
     return df_master
 
 def get_graph_details(graph_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
     # 再利用性を考慮して、graph_id で分岐
     if graph_id == "liquidity_horizon":
         # 必要なデータをDBから取得 (ここでは簡易的にすべて読み込むが、最適化余地あり)
-        _, df_collection_latest, _, df_asset_attribute = _read_table_from_db()
-        df_master = _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute)
+        df_collection, df_collection_latest, df_asset_sub_type_attribute, df_asset_attribute  = _read_table_from_db()
+        df_master = _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute)     
         
         # フィルタリング
         sub_type = params.get("sub_type")
+
         if sub_type:
-            # グラフ表示名は英語、DBは日本語かもしれないため変換が必要だが
-            # _build_liquidity_horizon では先に df_master を作ってから map している。
-            # ここではシンプルに、もし params["sub_type"] が英語名で来るなら、
-            # df_asset_sub_type_attribute を使って逆変換するか、
-            # あるいは df_master 側を英語化してからフィルタする。
-            # ここでは後者(英語化してからフィルタ)を採用する。
-            
-            _, _, df_asset_sub_type_attribute, _ = _read_table_from_db()
-            jp_to_en = dict(zip(
-                df_asset_sub_type_attribute["資産タイプとサブタイプ"],
-                df_asset_sub_type_attribute["英語名"]
-            ))
-            
-            # コピーして英語化
-            df_filtered = df_master.copy()
-            df_filtered["資産サブタイプ_en"] = df_filtered["資産サブタイプ"].map(jp_to_en)
-            
             # フィルタ
-            df_filtered = df_filtered[df_filtered["資産サブタイプ_en"] == sub_type]
+            df_filtered = df_master[df_master["資産サブタイプ"] == sub_type].reset_index(drop=True)
+            # 型
+            df_filtered[["資産名", "資産サブタイプ", "償還日"]] = df_filtered[["資産名", "資産サブタイプ", "償還日"]].astype(str)
+            df_filtered["資産額"] = df_filtered["資産額"].map(lambda x: f"¥{int(x):,}")
             
-            # ユーザー要望により、テーブル内の資産サブタイプは英語のままにする
-            df_filtered["資産サブタイプ"] = df_filtered["資産サブタイプ_en"]
-            
-            # 返却データ整形 (JSON Serializable に)
-            # 日付型を文字列に
-            if "償還日" in df_filtered.columns:
-                df_filtered["償還日"] = df_filtered["償還日"].dt.strftime("%Y-%m-%d")
-            
-            # 必要なカラムだけ返す
-            return {
-                "columns": ["資産名", "資産額", "償還日", "資産サブタイプ"],
-                "data": df_filtered[["資産名", "資産額", "償還日", "資産サブタイプ"]].to_dict(orient="records")
-            }
-            
-    return {"columns": [], "data": []}
+            #print(df_filtered.dtypes)
+
+            fig = go.Figure()
+            fig.add_trace(go.Table(
+                header=dict(values=list(df_filtered.columns.tolist())),
+                cells=dict(values=[df_filtered[col] for col in df_filtered.columns])
+            ))
+            fig.show()
+            fig_dict = fig.to_dict()
+            json_str = json.dumps(fig_dict, default=str)
+            return json_str
 
 if __name__ == "__main__":
     import os
@@ -670,4 +642,6 @@ if __name__ == "__main__":
     #_build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute)
     #_build_liquidity_pyramid(df_collection,df_asset_sub_type_attribute)
     #_build_true_risk_exposure_flow(df_collection)
-    #_build_liquidity_horizon(df_collection_latest, df_asset_attribute)
+    #_build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_asset_sub_type_attribute)
+    get_graph_details("liquidity_horizon", {"sub_type": "Time Deposits"})
+    #print(df)
