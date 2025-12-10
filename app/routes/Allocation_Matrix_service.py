@@ -497,9 +497,36 @@ def _build_liquidity_pyramid(df_collection, df_asset_sub_type_attribute):
 def _build_true_risk_exposure_flow(df_collection):
     pass
 
+<<<<<<< Updated upstream
 def _build_liquidity_horizon(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute):
     df_master = _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute)
     min_day = pd.to_datetime("today").normalize()
+=======
+def _build_liquidity_horizon(df_collection_latest, df_asset_attribute):
+    # 資産名 - 資産サブタイプ - 資産額 - 償還日のデータセットを作る
+    df_ref = df_asset_attribute.copy()
+    df = df_ref[df_ref["償還日"].notna()][["資産名","資産サブタイプ","償還日"]]
+    df_assets = (
+        df_collection_latest[df_collection_latest["資産名"].isin(
+            df["資産名"].tolist()
+        )][["資産名","資産額"]]
+    )
+    df.set_index("資産名", inplace=True)
+    df_assets.set_index("資産名", inplace=True)
+    df = pd.merge(df, df_assets, left_index=True, right_index=True)
+    df.reset_index(inplace=True)
+    
+    # 償還日を月毎にする
+    date_range = pd.date_range(start=df["償還日"].min(), end=df["償還日"].max(), freq="M")
+    df.set_index("償還日", inplace=True)
+    df = df.reindex(date_range).agg({
+        "資産名": "first",
+        "資産サブタイプ": "first",
+        "資産額": "sum"
+    }).reset_index()
+    
+    
+>>>>>>> Stashed changes
 
     # 月別のまとめてグラフ化
     df_master['償還日'] = pd.to_datetime(df_master['償還日']).dt.to_period('M').dt.to_timestamp('M')
