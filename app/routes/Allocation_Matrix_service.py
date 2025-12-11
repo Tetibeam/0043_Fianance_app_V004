@@ -11,6 +11,8 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import json
 
+from app.utils.dashboard_utility import make_vector, graph_individual_setting
+
 def _read_table_from_db():
     # 12か月前の月初を計算
     latest_date = get_latest_date()
@@ -53,17 +55,6 @@ def _read_table_from_db():
     df_asset_attribute = get_raw_table("asset_attribute")
 
     return df_asset_profit, df_asset_profit_latest, df_asset_sub_type_attribute, df_asset_attribute
-
-def _make_vector(current, previous):
-    if previous == 0:
-        return 0
-    rate = current / previous
-    if rate > 1.005:
-        return 1
-    elif rate < 0.995:
-        return -1
-    else:
-        return 0
 
 def _build_summary(df_collection) -> Dict[str, float]:
     latest = get_latest_date()
@@ -114,70 +105,14 @@ def _build_summary(df_collection) -> Dict[str, float]:
     return {
         "latest_date": latest_str,
         "active_growth_capital": round(active_growth_capital*100,1),
-        "active_growth_capital_vector": _make_vector(active_growth_capital, active_growth_capital_one_month_ago),
+        "active_growth_capital_vector": make_vector(active_growth_capital, active_growth_capital_one_month_ago),
         "aggressive_return_exposure": round(aggressive_return_exposure*100,1),
-        "aggressive_return_exposure_vector": _make_vector(aggressive_return_exposure, aggressive_return_exposure_one_month_ago),
+        "aggressive_return_exposure_vector": make_vector(aggressive_return_exposure, aggressive_return_exposure_one_month_ago),
         "emergency_buffer": round(emergency_buffer),
-        "emergency_buffer_vector": _make_vector(emergency_buffer, emergency_buffer_one_month_ago),
+        "emergency_buffer_vector": make_vector(emergency_buffer, emergency_buffer_one_month_ago),
         "debt_exposure_ratio": round(debt_exposure_ratio*100,1),
-        "debt_exposure_ratio_vector": _make_vector(debt_exposure_ratio, debt_exposure_ratio_one_month_ago),
+        "debt_exposure_ratio_vector": make_vector(debt_exposure_ratio, debt_exposure_ratio_one_month_ago),
     }
-
-def _make_graph_template():
-    theme = go.layout.Template(
-        layout=go.Layout(
-            autosize=True, margin=dict(l=50,r=30,t=10,b=40),
-            paper_bgcolor="#111111",
-            plot_bgcolor="#111111",
-            font=dict(family="Inter, Roboto", size=14, color="#DDDDDD"),
-
-            xaxis=dict(
-                title=dict(font_size=12),
-                title_standoff=16,
-                tickfont=dict(size=10),
-                showgrid=True,
-                gridcolor="#444444",
-                zeroline=False,
-                color="#cccccc"
-            ),
-            
-            yaxis=dict(
-                title=dict(font_size=12),
-                title_standoff=16,
-                separatethousands=False,
-                tickfont=dict(size=10),
-                showgrid=True,
-                gridcolor="#444444",
-                zeroline=False,
-                color="#cccccc"
-            ),
-            
-            legend=dict(
-                visible=True,
-                orientation="h",
-                yanchor="top",
-                y=1.2,
-                xanchor="right",
-                x=1,
-            ),
-            colorway=["#4E79A7", "#F28E2B"],
-            
-        )
-    )
-    pio.templates["dark_dashboard"] = theme
-    pio.templates.default = "plotly_dark+dark_dashboard"
-
-def _graph_individual_setting(fig, x_title, x_tickformat, y_title, y_tickprefix, y_tickformat):
-    fig.update_xaxes(
-        title = dict(text = x_title),
-        tickformat=x_tickformat
-    )
-    fig.update_yaxes(
-        title = dict(text = y_title),
-        tickprefix=y_tickprefix,
-        tickformat=y_tickformat,
-    )
-    return fig
 
 def _build_asset_tree_map(df_collection, df_asset_sub_type_attribute):
     #データフレーム作成
@@ -252,14 +187,6 @@ def _set_return(df_map, df, latest, one_year_ago):
             (latest_return - one_year_ago_return) / mean_asset
         )
         df_sub.loc[subtype, "資産額"] = mean_asset
-    # ソーシャルレンディング
-    #latest_return = df.loc[(df["資産サブタイプ"] == "預入金") & (df["date"] == latest), "トータルリターン"].iloc[0]
-    #one_year_ago_return = df.loc[(df["資産サブタイプ"] == "預入金") & (df["date"] == one_year_ago), "トータルリターン"].iloc[0]
-    #mean_asset = df[df["資産サブタイプ"] == "ソーシャルレンディング"]["資産額"].mean()
-    #df_sub.loc["ソーシャルレンディング", "リターン"] = (
-    #    (latest_return - one_year_ago_return) / mean_asset
-    #)
-    #df_sub.loc["預入金", "リターン"] = 0.0
 
     return df_sub
 
@@ -367,7 +294,7 @@ def _build_portfolio_efficiency_map(df_collection, df_asset_sub_type_attribute):
                 '<br><b>Asset Size</b>: ¥%{customdata:,}<extra></extra>'
         )
     )
-    _graph_individual_setting(
+    fig = graph_individual_setting(
         fig,
         x_title="Return",
         y_title="Sharpe Ratio",
@@ -499,10 +426,12 @@ def _build_true_risk_exposure_flow(df_collection):
 
 def _build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_asset_sub_type_attribute):
     # 資産名 - 資産サブタイプ - 資産額 - 償還日のデータセットを作る
-    df_master = _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute)
+    df_master = _get_liquidity_horizon_master_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute)
     
     # 償還日を月毎にする
     df_monthly = df_master.copy()
+    min_day = pd.to_datetime("today").normalize()
+    df_monthly = df_monthly[df_monthly["償還日"] <= min_day + pd.DateOffset(months=12)].reset_index(drop=True)
     df_monthly['償還日'] = pd.to_datetime(df_monthly['償還日']).dt.to_period('M').dt.to_timestamp('M')
 
     # 月別にする
@@ -535,7 +464,7 @@ def _build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_asset_s
                 '<br>Assets: ¥%{y:,}'+
                 '<extra></extra>',
         ))
-    fig = _graph_individual_setting(
+    fig = graph_individual_setting(
         fig, x_title="償還日",x_tickformat="%y-%m",y_title="償還額", y_tickprefix="¥",y_tickformat=""
     )
     fig.update_layout(
@@ -561,8 +490,6 @@ def build_dashboard_payload(include_graphs: bool = True, include_summary: bool =
         result["summary"] = _build_summary(df_collection)
         
     if include_graphs:
-        _make_graph_template()
-
         result["graphs"] = {
             "asset_tree_map": _build_asset_tree_map(df_collection,df_asset_sub_type_attribute),
             "target_deviation": _build_target_deviation(df_collection),
@@ -573,7 +500,7 @@ def build_dashboard_payload(include_graphs: bool = True, include_summary: bool =
         }
     return result
 
-def _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute):
+def _get_liquidity_horizon_master_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute):
     # 資産名-資産サブタイプ-償還日-資産額のマスターデータフレーム作成
     df = df_asset_attribute.copy()
     mask = df["償還日"].notna()
@@ -585,15 +512,17 @@ def _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute, df_ass
     
     df_master = pd.merge(df_maturity_date.set_index("資産名"), df_assets.set_index("資産名"), on="資産名", how="left")
     df_master.reset_index(inplace=True)
-    min_day = pd.to_datetime("today").normalize()
-    df_master = df_master[df_master["償還日"] <= min_day + pd.DateOffset(months=12)].reset_index(drop=True)
+
+    #min_day = pd.to_datetime("today").normalize()
+    #df_master = df_master[df_master["償還日"] <= min_day + pd.DateOffset(months=12)].reset_index(drop=True)
+    
     # 資産サブタイプを英語にする
     jp_to_en = dict(zip(
         df_asset_sub_type_attribute["資産タイプとサブタイプ"],
         df_asset_sub_type_attribute["英語名"]
     ))
     df_master["資産サブタイプ"] = df_master["資産サブタイプ"].map(jp_to_en)
-
+    
     return df_master
 
 def get_graph_details(graph_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
@@ -601,28 +530,46 @@ def get_graph_details(graph_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
     if graph_id == "liquidity_horizon":
         # 必要なデータをDBから取得 (ここでは簡易的にすべて読み込むが、最適化余地あり)
         df_collection, df_collection_latest, df_asset_sub_type_attribute, df_asset_attribute  = _read_table_from_db()
-        df_master = _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute)     
+        df_master = _get_liquidity_horizon_master_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute)     
         
         # フィルタリング
         sub_type = params.get("sub_type")
 
         if sub_type:
             # フィルタ
-            df_filtered = df_master[df_master["資産サブタイプ"] == sub_type].reset_index(drop=True)
+            df_filtered = df_master[df_master["資産サブタイプ"] == sub_type][["資産名","償還日","資産額"]].reset_index(drop=True)
+            df_filtered = df_filtered.sort_values(by="償還日", ascending=True).reset_index(drop=True)
             # 型
-            df_filtered[["資産名", "資産サブタイプ", "償還日"]] = df_filtered[["資産名", "資産サブタイプ", "償還日"]].astype(str)
+            df_filtered[["資産名", "償還日"]] = df_filtered[["資産名", "償還日"]].astype(str)
             df_filtered["資産額"] = df_filtered["資産額"].map(lambda x: f"¥{int(x):,}")
+            # 名前
+            df_filtered.rename(columns={"資産名": "Asset Name", "償還日": "Maturity Date", "資産額": "Redemption Amount"}, inplace=True)
             
             #print(df_filtered.dtypes)
 
             fig = go.Figure()
             fig.add_trace(go.Table(
-                header=dict(values=list(df_filtered.columns.tolist())),
-                cells=dict(values=[df_filtered[col] for col in df_filtered.columns])
+                columnwidth=[4, 1, 1.5],
+
+                header=dict(
+                    values=list(df_filtered.columns.tolist()),
+                    align="center",
+                    line_width=5,
+                    font=dict(size=22, family='Roboto, sans-serif'),
+                    height=32,
+                ),
+                cells=dict(
+                    values=[df_filtered[col] for col in df_filtered.columns],
+                    align=["left","right","right"],
+                    line_width=3,
+                    font=dict(size=18, family='Roboto, sans-serif'),
+                    height=30,
+                ),
             ))
             fig.update_layout(
                 meta={"id": "liquidity_horizon"},
             )
+
             #fig.show()
             fig_dict = fig.to_dict()
             json_str = json.dumps(fig_dict, default=str)
@@ -639,12 +586,12 @@ if __name__ == "__main__":
     from app.utils.db_manager import init_db
     init_db(base_dir)
     df_collection, df_collection_latest, df_asset_sub_type_attribute, df_asset_attribute = _read_table_from_db()
-    #print(_build_summary(df_collection))
-    #_build_asset_tree_map(df_collection,df_asset_sub_type_attribute)
-    #_build_target_deviation(df_collection)
-    #_build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute)
-    #_build_liquidity_pyramid(df_collection,df_asset_sub_type_attribute)
-    #_build_true_risk_exposure_flow(df_collection)
-    #_build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_asset_sub_type_attribute)
-    print(get_graph_details("liquidity_horizon", {"sub_type": "Time Deposits"}))
+    print(_build_summary(df_collection))
+    _build_asset_tree_map(df_collection,df_asset_sub_type_attribute)
+    _build_target_deviation(df_collection)
+    _build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute)
+    _build_liquidity_pyramid(df_collection,df_asset_sub_type_attribute)
+    _build_true_risk_exposure_flow(df_collection)
+    _build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_asset_sub_type_attribute)
+    get_graph_details("liquidity_horizon", {"sub_type": "Time Deposits"})
     #print(df)

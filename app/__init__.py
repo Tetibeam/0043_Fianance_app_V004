@@ -34,4 +34,8 @@ def create_app():
     from app.routes.routes_data import data_bp
     app.register_blueprint(data_bp)
 
+    # plotly template
+    from app.utils.dashboard_utility import make_graph_template
+    make_graph_template()
+
     return app

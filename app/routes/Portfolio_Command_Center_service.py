@@ -10,6 +10,8 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import json
 
+from app.utils.dashboard_utility import make_vector, graph_individual_setting
+
 def _read_table_from_db():
     # 12か月前の月初を計算
     latest_date = get_latest_date()
@@ -58,17 +60,6 @@ def _read_table_from_db():
     #print(df)
     return df
 
-def _make_vector(current, previous):
-    if previous == 0:
-        return 0
-    rate = current / previous
-    if rate > 1.005:
-        return 1
-    elif rate < 0.995:
-        return -1
-    else:
-        return 0
-
 def _build_summary(df_collection) -> Dict[str, float]:
     latest = get_latest_date()
     one_month_ago = latest - pd.DateOffset(months=1)
@@ -89,70 +80,14 @@ def _build_summary(df_collection) -> Dict[str, float]:
     return {
         "latest_date": latest_str,
         "fire_progress": round(fire_progress*100, 1),
-        "fire_progress_vector":_make_vector(fire_progress, fire_progress_one_month_ago), 
+        "fire_progress_vector":make_vector(fire_progress, fire_progress_one_month_ago), 
         "total_assets": round(total_assets, 0),
-        "total_assets_vector":_make_vector(total_assets, total_assets_one_month_ago),
+        "total_assets_vector":make_vector(total_assets, total_assets_one_month_ago),
         "total_target_assets": round(total_target_assets, 0),
-        "total_target_assets_vector":_make_vector(total_target_assets, total_target_assets_one_month_ago),
+        "total_target_assets_vector":make_vector(total_target_assets, total_target_assets_one_month_ago),
         "difference": round(difference, 0),
-        "difference_vector":_make_vector(difference, difference_one_month_ago), 
+        "difference_vector":make_vector(difference, difference_one_month_ago), 
     }
-
-def _make_graph_template():
-    theme = go.layout.Template(
-        layout=go.Layout(
-            autosize=True, margin=dict(l=50,r=30,t=10,b=40),
-            paper_bgcolor="#111111",
-            plot_bgcolor="#111111",
-            font=dict(family="Inter, Roboto", size=14, color="#DDDDDD"),
-
-            xaxis=dict(
-                title=dict(font_size=12),
-                title_standoff=16,
-                tickfont=dict(size=10),
-                showgrid=True,
-                gridcolor="#444444",
-                zeroline=False,
-                color="#cccccc"
-            ),
-            
-            yaxis=dict(
-                title=dict(font_size=12),
-                title_standoff=16,
-                separatethousands=False,
-                tickfont=dict(size=10),
-                showgrid=True,
-                gridcolor="#444444",
-                zeroline=False,
-                color="#cccccc"
-            ),
-            
-            legend=dict(
-                visible=True,
-                orientation="h",
-                yanchor="top",
-                y=1.2,
-                xanchor="right",
-                x=1,
-            ),
-            colorway=["#4E79A7", "#F28E2B"],
-            
-        )
-    )
-    pio.templates["dark_dashboard"] = theme
-    pio.templates.default = "plotly_dark+dark_dashboard"
-
-def _graph_individual_setting(fig, x_title, x_tickformat, y_title, y_tickprefix, y_tickformat):
-    fig.update_xaxes(
-        title = dict(text = x_title),
-        tickformat=x_tickformat
-    )
-    fig.update_yaxes(
-        title = dict(text = y_title),
-        tickprefix=y_tickprefix,
-        tickformat=y_tickformat,
-    )
-    return fig
 
 def _build_progress_rate(df_collection):
     # データフレーム
@@ -175,7 +110,7 @@ def _build_progress_rate(df_collection):
         x=x_values, y=y2_values, mode="lines", name="Smoothing",
         hovertemplate = '<i>x</i>: %{x}<br><i>y</i>: %{y:.1%}<extra></extra>'
     ))
-    fig = _graph_individual_setting(fig, "date", "%y-%m-%d", "Progress Rate", "", ".0%")
+    fig = graph_individual_setting(fig, "date", "%y-%m-%d", "Progress Rate", "", ".0%")
     # metaでID付与
     fig.update_layout(meta={"id": "progress_rate"})
 
@@ -218,7 +153,7 @@ def _build_saving_rate(df_collection):
         x=x_values, y=y2_values, mode="lines+markers", name="Target",
         hovertemplate = '<i>x</i>: %{x}<br><i>y</i>: %{y:.1%}<extra></extra>'
     ))
-    fig = _graph_individual_setting(fig, "date", "%y-%m", "Saving Rate", "", ".0%")
+    fig = graph_individual_setting(fig, "date", "%y-%m", "Saving Rate", "", ".0%")
     # metaでID付与
     fig.update_layout(meta={"id": "saving_rate"})
 
@@ -244,7 +179,7 @@ def _build_total_assets(df_collection):
         x=x_values, y=y2_values, mode="lines", name="Target",
         hovertemplate = '<i>x</i>: %{x}<br><i>y</i>: ¥%{y:,}+<extra></extra>'
     ))
-    fig = _graph_individual_setting(fig, "date", "%y-%m-%d", "Net Assets", "¥", "")
+    fig = graph_individual_setting(fig, "date", "%y-%m-%d", "Net Assets", "¥", "")
     # metaでID付与
     fig.update_layout(meta={"id": "total_assets"})
 
@@ -271,7 +206,7 @@ def _build_total_returns(df_collection):
         x=x_values, y=y2_values, mode="lines", name="Target",
         hovertemplate = '<i>x</i>: %{x}<br><i>y</i>: ¥%{y:,}<extra></extra>'
     ))
-    fig = _graph_individual_setting(fig,"date", "%y-%m-%d", "Total Returns", "¥", "")
+    fig = graph_individual_setting(fig,"date", "%y-%m-%d", "Total Returns", "¥", "")
 
     # metaでID付与
     fig.update_layout(meta={"id": "total_returns"})
@@ -305,7 +240,7 @@ def _build_general_balance(df_collection):
         hovertemplate = '<i>x</i>: %{x}<br><i>y</i>: ¥%{y:,}<extra></extra>'
     ))
 
-    fig = _graph_individual_setting(fig, "date", "%y-%m", "Net Balance", "¥", "")
+    fig = graph_individual_setting(fig, "date", "%y-%m", "Net Balance", "¥", "")
     # metaでID付与
     fig.update_layout(meta={"id": "general_balance"})
 
@@ -337,7 +272,7 @@ def _build_special_balance(df_collection):
         hovertemplate = '<i>x</i>: %{x}<br><i>y</i>: ¥%{y:,}<extra></extra>'
     ))
 
-    fig = _graph_individual_setting(fig, "date", "%y-%m", "Net Cash - Cumulative", "¥", "")
+    fig = graph_individual_setting(fig, "date", "%y-%m", "Net Cash - Cumulative", "¥", "")
     # metaでID付与
     fig.update_layout(meta={"id": "special_balance"})
 
@@ -357,8 +292,6 @@ def build_dashboard_payload(include_graphs: bool = True, include_summary: bool =
         result["summary"] = _build_summary(df_collection)
         #print(result)
     if include_graphs:
-        _make_graph_template()
-
         result["graphs"] = {
             "progress_rate": _build_progress_rate(df_collection),
             "saving_rate": _build_saving_rate(df_collection),

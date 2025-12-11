@@ -58,20 +58,15 @@ function AllocationMatrixDetails() {
   if (error) {
     return <div className="main" style={{ color: '#ff6b6b' }}>Error: {error}</div>
   }
-
-  // Determine Japanese subtitle from data or fallback (Reverted to English/Source as requested)
-  // const displaySubType = (data.length > 0 && data[0]['資産サブタイプ']) ? data[0]['資産サブタイプ'] : subType;
-  // const displayGraphName = graphId === 'liquidity_horizon' ? '流動性ホライズン' : graphId;
   
-  // User requested to keep source data (English)
   const displaySubType = subType;
   const displayGraphName = graphId === 'liquidity_horizon' ? 'Liquidity Horizon' : graphId;
-
+  
   return (
     <div className="graph-fullscreen">
       <div 
         className="graph-title" 
-        dangerouslySetInnerHTML={{ __html: subType}}
+        dangerouslySetInnerHTML={{ __html: displayGraphName + " - " + subType}}
       />
       {fig && (
         <Plot
