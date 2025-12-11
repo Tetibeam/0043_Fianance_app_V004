@@ -44,10 +44,10 @@ def create_app():
         app.config[key.upper()] = value
 
     # Blueprint登録
-    from app.routes.routes_Portfolio_Command_Center import Portfolio_Command_Center_bp
+    from app.routes.Portfolio_Command_Center_routes import Portfolio_Command_Center_bp
     app.register_blueprint(Portfolio_Command_Center_bp)
 
-    from app.routes.routes_Allocation_Matrix import Allocation_Matrix_bp
+    from app.routes.Allocation_Matrix_routes import Allocation_Matrix_bp
     app.register_blueprint(Allocation_Matrix_bp)
     
     from app.routes.routes_data import data_bp

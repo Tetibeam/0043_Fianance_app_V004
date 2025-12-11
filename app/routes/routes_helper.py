@@ -1,7 +1,7 @@
 import json
 import hashlib
 from flask import request, make_response, jsonify, current_app
-
+from typing import Dict, Any
 
 def apply_etag(payload: dict):
     """
@@ -42,3 +42,23 @@ def apply_etag(payload: dict):
     resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     
     return resp
+
+# ----------------------------------------------------------------------
+# カスタムキャッシュキー生成関数
+# ----------------------------------------------------------------------
+
+def key_generator_with_params(graph_id: str, params: Dict[str, Any]):
+    # 1. params 辞書をソートし、JSON文字列に変換
+    try:
+        # paramsの内容が変われば、この文字列は必ず変わる
+        params_str = json.dumps(params, sort_keys=True)
+    except Exception:
+        params_str = str(params)
+    
+    # 2. 最終キーを生成: モジュール名を含めず、関数名と引数のみでキーを作成
+    #    この関数が使われる場所は限定的であるため、これで衝突は起きにくい
+    cache_key = f'{graph_id}:{params_str}'
+    
+    return cache_key
+
+# ----------------------------------------------------------------------
