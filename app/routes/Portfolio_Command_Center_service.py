@@ -9,6 +9,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 import json
+from app import cache
 
 from app.utils.dashboard_utility import make_vector, graph_individual_setting
 
@@ -281,7 +282,10 @@ def _build_special_balance(df_collection):
     #fig.show()
     return json_str
 
+@cache.cached(timeout=60)  # 60秒間（1分間）キャッシュを保持する
 def build_dashboard_payload(include_graphs: bool = True, include_summary: bool = True) -> Dict[str, Any]:
+    print("--- [CACHE MISS] Running heavy calculation for build_dashboard_payload ---")
+    
     # DBから必要データを読み込みます
     df_collection = _read_table_from_db()
     #print(df_target)

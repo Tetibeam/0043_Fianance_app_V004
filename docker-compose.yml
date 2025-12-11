@@ -19,6 +19,25 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:latest
+    container_name: finance_redis # コンテナ名を明確に定義
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: 
+      [
+        "redis-server", 
+        "--appendonly", "yes", # データ永続化を有効化 (再起動後もキャッシュを保持)
+        "--maxmemory", "500mb", # 🚨 最大メモリを 500MB に設定 (サーバー環境に合わせて調整)
+        "--maxmemory-policy", "allkeys-lru" # 🚨 メモリ上限時の削除ポリシー (LRU: Least Recently Used)
+      ]
+    # オプション: データの永続化のためのボリューム設定
+    volumes:
+      - redis_data:/data
+
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
     driver: local

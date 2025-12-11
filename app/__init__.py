@@ -1,11 +1,28 @@
 from flask import Flask
 from flask_cors import CORS
+from flask_caching import Cache
+
 from app.utils.config import load_settings
 import os
 
+# 初期化前に import されるファイルで利用できるよう、ファイルスコープで定義
+cache = Cache()
+
 def create_app():
     app = Flask(__name__)
-    
+    cache_config = {
+        # Redisをバックエンドに使用
+        "CACHE_TYPE": "redis",
+        # Redisの接続先URL (ローカルのデフォルトポート)
+        "CACHE_REDIS_URL": "redis://localhost:6379/0",
+        # キャッシュのデフォルト有効期限 (秒)。今回は関数デコレーターで指定するため不要だが、設定しておく。
+        "CACHE_DEFAULT_TIMEOUT": 300 
+    }
+
+    app.config.from_mapping(cache_config)
+    # Cache インスタンスの初期化
+    cache.init_app(app)
+
     # CORSを有効化（開発環境用）
     CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}})
 
