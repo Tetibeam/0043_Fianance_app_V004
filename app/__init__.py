@@ -53,6 +53,9 @@ def create_app():
     from app.routes.routes_data import data_bp
     app.register_blueprint(data_bp)
 
+    from app.routes.Cashflow_Analytics_routes import Cashflow_Analytics_bp
+    app.register_blueprint(Cashflow_Analytics_bp)
+
     # plotly template
     from app.utils.dashboard_utility import make_graph_template
     make_graph_template()

@@ -283,8 +283,8 @@ def _build_special_balance(df_collection):
     return json_str
 
 @cache.cached(timeout=300)  # 300秒間（5分間）キャッシュを保持する
-def build_dashboard_payload(include_graphs: bool = True, include_summary: bool = True) -> Dict[str, Any]:
-    print("--- [CACHE MISS] Running heavy calculation for build_dashboard_payload ---")
+def build_PCC_payload(include_graphs: bool = True, include_summary: bool = True) -> Dict[str, Any]:
+    print("--- [CACHE MISS] Running heavy calculation for build_PCC_payload ---")
     
     # DBから必要データを読み込みます
     df_collection = _read_table_from_db()

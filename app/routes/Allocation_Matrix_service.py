@@ -332,7 +332,7 @@ def _build_liquidity_horizon(df_collection_latest, df_asset_attribute, df_asset_
         (df_monthly["償還日"] >= min_day) & (df_monthly["償還日"] <= min_day + pd.DateOffset(months=12))
     ].reset_index(drop=True)
     df_monthly['償還日'] = pd.to_datetime(df_monthly['償還日']).dt.to_period('M').dt.to_timestamp('M')
-    all_months = pd.date_range(start=min_day, end=min_day + pd.DateOffset(months=12), freq="MS")
+    all_months = pd.date_range(start=min_day, end=min_day + pd.DateOffset(months=12), freq="ME")
     #print(df_monthly)
 
     # サブタイプごとにグラフを描く
@@ -373,9 +373,9 @@ def _build_liquidity_horizon(df_collection_latest, df_asset_attribute, df_asset_
     return json_str
 
 @cache.cached(timeout=300)  # 300秒間（5分間）キャッシュを保持する
-def build_dashboard_payload(include_graphs: bool = True, include_summary: bool = True) -> Dict[str, Any]:
+def build_Allocation_Matrix_payload(include_graphs: bool = True, include_summary: bool = True) -> Dict[str, Any]:
 
-    print("--- [CACHE MISS] Running heavy calculation for build_dashboard_payload ---")
+    print("--- [CACHE MISS] Running heavy calculation for build_Allocation_Matrix_payload ---")
     
     # DBから必要データを読み込みます
     df_collection, df_collection_latest, df_asset_sub_type_attribute, df_asset_attribute  = read_table_from_db()
@@ -396,7 +396,7 @@ def build_dashboard_payload(include_graphs: bool = True, include_summary: bool =
         }
     return result
 
-def get_graph_details(graph_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
+def get_Allocation_Matrix_details(graph_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
 
     # 再利用性を考慮して、graph_id で分岐
     if graph_id == "liquidity_horizon":
@@ -413,7 +413,7 @@ if __name__ == "__main__":
     from app.utils.db_manager import init_db
     init_db(base_dir)
     df_collection, df_collection_latest, df_asset_sub_type_attribute, df_asset_attribute = read_table_from_db()
-    print(_build_summary(df_collection))
+    #print(_build_summary(df_collection))
     #_build_asset_tree_map(df_collection,df_asset_sub_type_attribute)
     #_build_target_deviation(df_collection)
     #_build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute)

@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app,jsonify,make_response, request
-from .Allocation_Matrix_service import build_dashboard_payload, get_graph_details
+from .Allocation_Matrix_service import build_Allocation_Matrix_payload, get_Allocation_Matrix_details
 from werkzeug.exceptions import InternalServerError
 import os
 from .routes_helper import apply_etag
@@ -29,7 +29,7 @@ def graphs():
     フロントはここから時系列データ・メタ情報を受け取り描画する。
     """
     try:
-        payload = build_dashboard_payload(include_graphs=True, include_summary=False)
+        payload = build_Allocation_Matrix_payload(include_graphs=True, include_summary=False)
         return apply_etag(payload)
     except Exception as e:
         import traceback
@@ -44,7 +44,7 @@ def summary():
     サマリ（軽量）だけほしいフロントのための簡易エンドポイント。
     """
     try:
-        payload = build_dashboard_payload(include_graphs=False, include_summary=True)
+        payload = build_Allocation_Matrix_payload(include_graphs=False, include_summary=True)
         return apply_etag(payload)
     except Exception as e:
         import traceback
@@ -67,7 +67,7 @@ def details():
         if sub_type:
             params["sub_type"] = sub_type
             
-        result = get_graph_details(graph_id, params)
+        result = get_Allocation_Matrix_details(graph_id, params)
 
         return apply_etag(result)
     except Exception as e:

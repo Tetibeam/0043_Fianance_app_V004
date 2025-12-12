@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app,jsonify,make_response
-from .Portfolio_Command_Center_service import build_dashboard_payload
+from .Portfolio_Command_Center_service import build_PCC_payload
 from werkzeug.exceptions import InternalServerError
 from .routes_helper import apply_etag
 import os
@@ -29,7 +29,7 @@ def graphs():
     フロントはここから時系列データ・メタ情報を受け取り描画する。
     """
     try:
-        payload = build_dashboard_payload(include_graphs=True, include_summary=False)
+        payload = build_PCC_payload(include_graphs=True, include_summary=False)
 
         return apply_etag(payload)
     except Exception as e:
@@ -45,7 +45,7 @@ def summary():
     サマリ（軽量）だけほしいフロントのための簡易エンドポイント。
     """
     try:
-        payload = build_dashboard_payload(include_graphs=False, include_summary=True)
+        payload = build_PCC_payload(include_graphs=False, include_summary=True)
         return apply_etag(payload)
         
     except Exception as e:

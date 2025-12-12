@@ -4,7 +4,7 @@ import Sidebar from './components/Sidebar'
 import PortfolioCommandCenter from './pages/PortfolioCommandCenter'
 import AllocationMatrix from './pages/AllocationMatrix'
 import AllocationMatrixDetails from './pages/AllocationMatrixDetails'
-
+import CashflowAnalytics from './pages/CashflowAnalytics'
 function App() {
   return (
     <div className="app-container">
@@ -17,8 +17,8 @@ function App() {
         <Route path="/allocation_matrix" element={<AllocationMatrix />} />
         <Route path="/allocation_matrix/:graphId/details" element={<AllocationMatrixDetails />} />
 
-        {/* <Route path="/cashflow" element={<CashflowAnalytics />} /> */}
-        {/* <Route path="/performance" element={<InvestmentPerformance />} /> */}
+        {/* cashflow_analytics */}
+        <Route path="/cashflow_analytics/:graphId/details" element={<CashflowAnalytics />} />
       </Routes>
     </div>
   )
