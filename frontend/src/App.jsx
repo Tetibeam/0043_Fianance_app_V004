@@ -18,6 +18,7 @@ function App() {
         <Route path="/allocation_matrix/:graphId/details" element={<AllocationMatrixDetails />} />
 
         {/* cashflow_analytics */}
+        <Route path="/cashflow_analytics" element={<CashflowAnalytics />} />
         <Route path="/cashflow_analytics/:graphId/details" element={<CashflowAnalytics />} />
       </Routes>
     </div>

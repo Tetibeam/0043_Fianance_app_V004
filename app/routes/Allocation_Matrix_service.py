@@ -154,6 +154,7 @@ def _build_portfolio_efficiency_map(df_collection, df_item_attribute):
         df_map.loc[subtype, "シャープレシオ"] = cal_sharpe_ratio(
             df[mask], subtype, one_year_ago, latest, df_item_attribute,
             df_map.loc[subtype, "リターン"], df_map.loc["日本国債", "リターン"])
+    #print(df_map)
     
     # 名称変換
     df_map.index = df_map.index.map(get_map_jp_to_en_sub_type(df_item_attribute))
@@ -416,9 +417,9 @@ if __name__ == "__main__":
     #print(_build_summary(df_collection))
     #_build_asset_tree_map(df_collection,df_item_attribute)
     #_build_target_deviation(df_collection)
-    #_build_portfolio_efficiency_map(df_collection,df_item_attribute)
+    _build_portfolio_efficiency_map(df_collection,df_item_attribute)
     #_build_liquidity_pyramid(df_collection,df_item_attribute)
     #_build_true_risk_exposure_flow(df_collection)
-    _build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_item_attribute)
+    #_build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_item_attribute)
     #get_graph_details("liquidity_horizon", {"sub_type": "Time Deposits"})
     #print(df)

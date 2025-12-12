@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import apiClient from '../apiClient'
 import GraphContainer from '../components/GraphContainer'
 
-function AllocationMatrix() {
+function CashflowAnalytics() {
   const [graphs, setGraphs] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -90,4 +90,4 @@ function AllocationMatrix() {
   )
 }
 
-export default AllocationMatrix
+export default CashflowAnalytics

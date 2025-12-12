@@ -98,6 +98,7 @@ def query_table_date_filter(table_name, start_date:pd.Timestamp, end_date:pd.Tim
     engine = get_engine("finance")
     with engine.connect() as conn:
         df = pd.read_sql_query(sql, conn, params={"start_date": start_date.strftime("%Y-%m-%d"), "end_date": end_date.strftime("%Y-%m-%d")})
+    df["date"] = pd.to_datetime(df["date"])
     return df
 
 

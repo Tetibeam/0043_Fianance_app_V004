@@ -4,7 +4,9 @@ import numpy as np
 def cal_total_return(df, sub_type, start_date, end_date):
     
     total_return = df.loc[df["date"] == end_date, "トータルリターン"].values[0] - df.loc[df["date"] == start_date, "トータルリターン"].values[0]
+    
     total_asset = df.loc[(df["date"] >= start_date) & (df["date"] <= end_date), "資産額"].mean()
+
     return  total_return/total_asset, total_asset
 
 def cal_sharpe_ratio(
