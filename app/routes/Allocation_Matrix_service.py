@@ -323,15 +323,21 @@ def _build_true_risk_exposure_flow(df_collection):
     pass
 
 def _build_liquidity_horizon(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute):
-    df_master = _get_liquidity_horizon_data(df_collection_latest, df_asset_attribute)
+    df_master = get_liquidity_horizon_master_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute)
     min_day = pd.to_datetime("today").normalize()
 
     # 月別のまとめてグラフ化
-    df_master['償還日'] = pd.to_datetime(df_master['償還日']).dt.to_period('M').dt.to_timestamp('M')
-    all_months = pd.date_range(start=min_day, end=min_day + pd.DateOffset(months=12), freq="ME")
-    
+    df_monthly = df_master.copy()
+    df_monthly = df_monthly[
+        (df_monthly["償還日"] >= min_day) & (df_monthly["償還日"] <= min_day + pd.DateOffset(months=12))
+    ].reset_index(drop=True)
+    df_monthly['償還日'] = pd.to_datetime(df_monthly['償還日']).dt.to_period('M').dt.to_timestamp('M')
+    all_months = pd.date_range(start=min_day, end=min_day + pd.DateOffset(months=12), freq="MS")
+    #print(df_monthly)
+
     # サブタイプごとにグラフを描く
     sub_types = df_monthly["資産サブタイプ"].unique().tolist()
+    #print(sub_types)
     fig = go.Figure()
     for sub_type in sub_types:
         df_sub = df_monthly[df_monthly["資産サブタイプ"] == sub_type].copy()
@@ -406,13 +412,13 @@ if __name__ == "__main__":
     # DBマネージャーの初期化
     from app.utils.db_manager import init_db
     init_db(base_dir)
-    df_collection, df_collection_latest, df_asset_sub_type_attribute, df_asset_attribute = _read_table_from_db()
-    #print(_build_summary(df_collection))
+    df_collection, df_collection_latest, df_asset_sub_type_attribute, df_asset_attribute = read_table_from_db()
+    print(_build_summary(df_collection))
     #_build_asset_tree_map(df_collection,df_asset_sub_type_attribute)
     #_build_target_deviation(df_collection)
-    _build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute)
+    #_build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute)
     #_build_liquidity_pyramid(df_collection,df_asset_sub_type_attribute)
     #_build_true_risk_exposure_flow(df_collection)
-    #_build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_asset_sub_type_attribute)
+    _build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_asset_sub_type_attribute)
     #get_graph_details("liquidity_horizon", {"sub_type": "Time Deposits"})
     #print(df)
