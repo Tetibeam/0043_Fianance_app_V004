@@ -8,10 +8,10 @@ def cal_total_return(df, sub_type, start_date, end_date):
     return  total_return/total_asset, total_asset
 
 def cal_sharpe_ratio(
-    df, sub_type,start_date, end_date, df_asset_sub_type_attribute,
+    df, sub_type,start_date, end_date, df_item_attribute,
     total_return, risk_free_rate):
 
-    df_ref = df_asset_sub_type_attribute.copy()
+    df_ref = df_item_attribute.copy()
     df_ref["リスク"] = df_ref["リスク"].astype(float)
     annualized_volatility = df_ref.loc[
         df_ref["項目"] == sub_type, "リスク"

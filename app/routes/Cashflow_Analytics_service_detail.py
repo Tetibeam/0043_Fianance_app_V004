@@ -16,6 +16,6 @@ def read_table_from_db():
     df_balance = query_table_date_filter("balance_detail", start_date, latest_date)
     #print(df_balance)
 
-    df_asset_sub_type_attribute = get_raw_table("asset_sub_type_attribute")
+    df_item_attribute = get_raw_table("item_attribute")
 
-    return df_balance, df_asset_sub_type_attribute
+    return df_balance, df_item_attribute

@@ -78,7 +78,7 @@ def _build_summary(df_collection) -> Dict[str, float]:
         "debt_exposure_ratio_vector": make_vector(debt_exposure_ratio, debt_exposure_ratio_one_month_ago),
     }
 
-def _build_asset_tree_map(df_collection, df_asset_sub_type_attribute):
+def _build_asset_tree_map(df_collection, df_item_attribute):
     #データフレーム作成
     latest = df_collection["date"].max()
     df = df_collection[df_collection["date"] == latest][["資産サブタイプ","資産タイプ","資産額"]]
@@ -100,8 +100,8 @@ def _build_asset_tree_map(df_collection, df_asset_sub_type_attribute):
     df_tree = pd.concat([df_tree, pd.DataFrame(list)], ignore_index=True)
 
 
-    df_tree["parents"] = df_tree["parents"].replace(get_map_jp_to_en_sub_type(df_asset_sub_type_attribute))
-    df_tree["labels"] = df_tree["labels"].replace(get_map_jp_to_en_sub_type(df_asset_sub_type_attribute))
+    df_tree["parents"] = df_tree["parents"].replace(get_map_jp_to_en_sub_type(df_item_attribute))
+    df_tree["labels"] = df_tree["labels"].replace(get_map_jp_to_en_sub_type(df_item_attribute))
 
     # グラフ生成
     labels = df_tree["labels"].tolist()
@@ -134,7 +134,7 @@ def _build_asset_tree_map(df_collection, df_asset_sub_type_attribute):
 def _build_target_deviation(df_collection):
     pass
 
-def _build_portfolio_efficiency_map(df_collection, df_asset_sub_type_attribute):
+def _build_portfolio_efficiency_map(df_collection, df_item_attribute):
     # データフレーム作成
     df = df_collection.copy()
     df.drop(df[df["資産タイプ"] == "負債"].index, inplace=True)
@@ -152,11 +152,11 @@ def _build_portfolio_efficiency_map(df_collection, df_asset_sub_type_attribute):
     for subtype in df_map.index:
         mask = (df["資産サブタイプ"] == subtype)
         df_map.loc[subtype, "シャープレシオ"] = cal_sharpe_ratio(
-            df[mask], subtype, one_year_ago, latest, df_asset_sub_type_attribute,
+            df[mask], subtype, one_year_ago, latest, df_item_attribute,
             df_map.loc[subtype, "リターン"], df_map.loc["日本国債", "リターン"])
     
     # 名称変換
-    df_map.index = df_map.index.map(get_map_jp_to_en_sub_type(df_asset_sub_type_attribute))
+    df_map.index = df_map.index.map(get_map_jp_to_en_sub_type(df_item_attribute))
     
     #print(df_map)
     # グラフ生成
@@ -210,11 +210,11 @@ def _build_portfolio_efficiency_map(df_collection, df_asset_sub_type_attribute):
     json_str = json.dumps(fig_dict)
     return json_str
 
-def _build_liquidity_pyramid(df_collection, df_asset_sub_type_attribute):
+def _build_liquidity_pyramid(df_collection, df_item_attribute):
     #データの生成
     latest = df_collection["date"].max()
     df = df_collection[df_collection["date"] == latest]
-    df_ref = df_asset_sub_type_attribute.copy()
+    df_ref = df_item_attribute.copy()
 
     tiers = [
         {'name': 'Tier 4: Long-Term / Illiquid Assets (Defined Contribution etc.)','color': '#5AB4EA',
@@ -322,8 +322,8 @@ def _build_liquidity_pyramid(df_collection, df_asset_sub_type_attribute):
 def _build_true_risk_exposure_flow(df_collection):
     pass
 
-def _build_liquidity_horizon(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute):
-    df_master = get_liquidity_horizon_master_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute)
+def _build_liquidity_horizon(df_collection_latest, df_asset_attribute, df_item_attribute):
+    df_master = get_liquidity_horizon_master_data(df_collection_latest, df_asset_attribute, df_item_attribute)
     min_day = pd.to_datetime("today").normalize()
 
     # 月別のまとめてグラフ化
@@ -378,7 +378,7 @@ def build_Allocation_Matrix_payload(include_graphs: bool = True, include_summary
     print("--- [CACHE MISS] Running heavy calculation for build_Allocation_Matrix_payload ---")
     
     # DBから必要データを読み込みます
-    df_collection, df_collection_latest, df_asset_sub_type_attribute, df_asset_attribute  = read_table_from_db()
+    df_collection, df_collection_latest, df_item_attribute, df_asset_attribute  = read_table_from_db()
 
     result = {"ok":True, "summary": {}, "graphs": {}}
 
@@ -387,12 +387,12 @@ def build_Allocation_Matrix_payload(include_graphs: bool = True, include_summary
         
     if include_graphs:
         result["graphs"] = {
-            "asset_tree_map": _build_asset_tree_map(df_collection,df_asset_sub_type_attribute),
+            "asset_tree_map": _build_asset_tree_map(df_collection,df_item_attribute),
             "target_deviation": _build_target_deviation(df_collection),
-            "portfolio_efficiency_map": _build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute),
-            "liquidity_pyramid": _build_liquidity_pyramid(df_collection,df_asset_sub_type_attribute),
+            "portfolio_efficiency_map": _build_portfolio_efficiency_map(df_collection,df_item_attribute),
+            "liquidity_pyramid": _build_liquidity_pyramid(df_collection,df_item_attribute),
             "true_risk_exposure_flow": _build_true_risk_exposure_flow(df_collection),
-            "liquidity_horizon": _build_liquidity_horizon(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute)
+            "liquidity_horizon": _build_liquidity_horizon(df_collection_latest, df_asset_attribute, df_item_attribute)
         }
     return result
 
@@ -412,13 +412,13 @@ if __name__ == "__main__":
     # DBマネージャーの初期化
     from app.utils.db_manager import init_db
     init_db(base_dir)
-    df_collection, df_collection_latest, df_asset_sub_type_attribute, df_asset_attribute = read_table_from_db()
+    df_collection, df_collection_latest, df_item_attribute, df_asset_attribute = read_table_from_db()
     #print(_build_summary(df_collection))
-    #_build_asset_tree_map(df_collection,df_asset_sub_type_attribute)
+    #_build_asset_tree_map(df_collection,df_item_attribute)
     #_build_target_deviation(df_collection)
-    #_build_portfolio_efficiency_map(df_collection,df_asset_sub_type_attribute)
-    #_build_liquidity_pyramid(df_collection,df_asset_sub_type_attribute)
+    #_build_portfolio_efficiency_map(df_collection,df_item_attribute)
+    #_build_liquidity_pyramid(df_collection,df_item_attribute)
     #_build_true_risk_exposure_flow(df_collection)
-    _build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_asset_sub_type_attribute)
+    _build_liquidity_horizon(df_collection_latest, df_asset_attribute,df_item_attribute)
     #get_graph_details("liquidity_horizon", {"sub_type": "Time Deposits"})
     #print(df)

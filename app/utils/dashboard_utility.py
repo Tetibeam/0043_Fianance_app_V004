@@ -68,8 +68,8 @@ def graph_individual_setting(fig, x_title, x_tickformat, y_title, y_tickprefix, 
     )
     return fig
 
-def get_map_jp_to_en_sub_type(df_asset_sub_type_attribute):
+def get_map_jp_to_en_sub_type(df_item_attribute):
     return dict(zip(
-        df_asset_sub_type_attribute["項目"],
-        df_asset_sub_type_attribute["英語名"]
+        df_item_attribute["項目"],
+        df_item_attribute["英語名"]
     ))

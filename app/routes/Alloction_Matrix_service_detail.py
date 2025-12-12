@@ -54,13 +54,13 @@ def read_table_from_db():
     )
     #print(df_asset_profit_latest)
 
-    df_asset_sub_type_attribute = get_raw_table("asset_sub_type_attribute")
+    df_item_attribute = get_raw_table("item_attribute")
 
     df_asset_attribute = get_raw_table("asset_attribute")
 
-    return df_asset_profit, df_asset_profit_latest, df_asset_sub_type_attribute, df_asset_attribute
+    return df_asset_profit, df_asset_profit_latest, df_item_attribute, df_asset_attribute
 
-def get_liquidity_horizon_master_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute):
+def get_liquidity_horizon_master_data(df_collection_latest, df_asset_attribute, df_item_attribute):
     # 資産名-資産サブタイプ-償還日-資産額のマスターデータフレーム作成
     df = df_asset_attribute.copy()
     mask = df["償還日"].notna()
@@ -79,8 +79,8 @@ def get_liquidity_horizon_master_data(df_collection_latest, df_asset_attribute, 
     # 資産サブタイプを英語にする
     df_master["資産サブタイプ"] = df_master["資産サブタイプ"].map(
        dict(zip(
-        df_asset_sub_type_attribute["項目"],
-        df_asset_sub_type_attribute["英語名"]
+        df_item_attribute["項目"],
+        df_item_attribute["英語名"]
         ))
     )
     
@@ -92,8 +92,8 @@ def liquidity_horizon_detail(graph_id: str, params: Dict[str, Any]):
     print("--- [CACHE MISS] Running heavy calculation for build_dashboard_payload ---")
 
     # 必要なデータをDBから取得 (ここでは簡易的にすべて読み込むが、最適化余地あり)
-    df_collection, df_collection_latest, df_asset_sub_type_attribute, df_asset_attribute  = read_table_from_db()
-    df_master = get_liquidity_horizon_master_data(df_collection_latest, df_asset_attribute, df_asset_sub_type_attribute)     
+    df_collection, df_collection_latest, df_item_attribute, df_asset_attribute  = read_table_from_db()
+    df_master = get_liquidity_horizon_master_data(df_collection_latest, df_asset_attribute, df_item_attribute)     
         
     # フィルタリング
     sub_type = params.get("sub_type")
