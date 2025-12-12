@@ -36,8 +36,8 @@ def query_table_aggregated(
     table_name: str,
     aggregates: dict,
     group_by: list = None,
-    start_date=None,
-    end_date=None,
+    start_date: pd.Timestamp = None,
+    end_date: pd.Timestamp = None,
     filters: dict = None,
     order_by: list = None  # 追加
 ) -> pd.DataFrame:
@@ -92,6 +92,16 @@ def query_table_aggregated(
         if 'date' in col.lower():
             df[col] = pd.to_datetime(df[col])
     return df
+
+def query_table_date_filter(table_name, start_date:pd.Timestamp, end_date:pd.Timestamp):
+    sql = f"SELECT * FROM {table_name} WHERE date >= :start_date AND date < :end_date"
+    engine = get_engine("finance")
+    with engine.connect() as conn:
+        df = pd.read_sql_query(sql, conn, params={"start_date": start_date.strftime("%Y-%m-%d"), "end_date": end_date.strftime("%Y-%m-%d")})
+    return df
+
+
+
 # ------ 書き込み -------
 def append_to_table(df: pd.DataFrame, table_name: str) -> int:
     """
