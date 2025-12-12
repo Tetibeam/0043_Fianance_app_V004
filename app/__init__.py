@@ -1,11 +1,30 @@
 from flask import Flask
 from flask_cors import CORS
+from flask_caching import Cache
+
 from app.utils.config import load_settings
 import os
+
+# 初期化前に import されるファイルで利用できるよう、ファイルスコープで定義
+cache = Cache()
 
 def create_app():
     app = Flask(__name__)
     
+    #キャッシュの設定
+    cache_config = {
+        # Redisをバックエンドに使用
+        "CACHE_TYPE": "redis",
+        # Redisの接続先URL (ローカルのデフォルトポート)
+        "CACHE_REDIS_URL": "redis://localhost:6379/0",
+        # キャッシュのデフォルト有効期限 (秒)。今回は関数デコレーターで指定するため不要だが、設定しておく。
+        "CACHE_DEFAULT_TIMEOUT": 300 
+    }
+
+    app.config.from_mapping(cache_config)
+    # Cache インスタンスの初期化
+    cache.init_app(app)
+
     # CORSを有効化（開発環境用）
     CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}})
 
@@ -25,13 +44,17 @@ def create_app():
         app.config[key.upper()] = value
 
     # Blueprint登録
-    from app.routes.routes_Portfolio_Command_Center import Portfolio_Command_Center_bp
+    from app.routes.Portfolio_Command_Center_routes import Portfolio_Command_Center_bp
     app.register_blueprint(Portfolio_Command_Center_bp)
 
-    from app.routes.routes_Allocation_Matrix import Allocation_Matrix_bp
+    from app.routes.Allocation_Matrix_routes import Allocation_Matrix_bp
     app.register_blueprint(Allocation_Matrix_bp)
     
     from app.routes.routes_data import data_bp
     app.register_blueprint(data_bp)
+
+    # plotly template
+    from app.utils.dashboard_utility import make_graph_template
+    make_graph_template()
 
     return app

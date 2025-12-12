@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import apiClient from '../apiClient'
 import GraphContainer from '../components/GraphContainer'
 
 function PortfolioCommandCenter() {
@@ -10,7 +10,8 @@ function PortfolioCommandCenter() {
   useEffect(() => {
     const fetchGraphs = async () => {
       try {
-        const response = await axios.get('/api/Portfolio_Command_Center/graphs')
+        const response = await apiClient.get('/Portfolio_Command_Center/graphs')
+
         setGraphs(response.data.graphs)
         setLoading(false)
       } catch (err) {
