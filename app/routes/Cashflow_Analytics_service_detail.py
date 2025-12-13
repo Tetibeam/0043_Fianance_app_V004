@@ -14,10 +14,12 @@ def read_table_from_db():
         (latest_date - pd.DateOffset(months=12)).replace(day=1),
         pd.to_datetime("2024-10-01")
     )
-    df_balance = query_table_date_filter("balance_detail", start_date, latest_date)
+    end_date = latest_date + pd.DateOffset(months=36)
+    
+    df_balance = query_table_date_filter("balance_detail", start_date, end_date)
     #print(df_balance)
     
-    # atrribute
+    # attribute
     df_item_attribute = get_raw_table("item_attribute")
     
     # 最新の生活防衛資金

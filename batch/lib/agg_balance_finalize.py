@@ -35,12 +35,13 @@ def add_target(start_date, end_date, df):
     mask = (df["date"] >= start_date) & (df["date"] <= end_date)
     df = df[mask]
 
-    mask = (urds.df_balance_target["date"] >= start_date) & (urds.df_balance_target["date"] <= end_date)
+    mask = (urds.df_balance_target["date"] >= start_date) & (urds.df_balance_target["date"] <= end_date+pd.DateOffset(years=3))
     df_target = urds.df_balance_target[mask]
     df_target = df_target[~df_target["収支項目"].str.contains("年金拠出", na=False)]
     df_target.loc[df_target["収支カテゴリー"] == "支出", "目標"] *= -1
 
     df_merge = pd.merge(df, df_target,on=["date","収支項目","収支タイプ","収支カテゴリー"],how="outer")
+    df_merge["金額"] = df_merge["金額"].fillna(0)
     return df_merge
 
 @check_args_types({0: pd.Timestamp, 1: pd.Timestamp})

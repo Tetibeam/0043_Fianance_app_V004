@@ -1,13 +1,15 @@
 from .Cashflow_Analytics_service_detail import read_table_from_db
 from app.utils.data_loader import get_latest_date
-from app.utils.dashboard_utility import make_vector
+from app.utils.dashboard_utility import make_vector, graph_individual_setting
 
 import pandas as pd
+import plotly.graph_objects as go
+import json
 
 
 def _build_summary(df_balance, df_emergency_buffer):
     latest = get_latest_date()
-    latest_beginning_of_month = latest.replace(day=1)
+    latest_beginning_of_month = latest.replace(day=1) 
     three_month_ago = (latest - pd.DateOffset(months=3)) + pd.offsets.MonthBegin(-1)
     six_month_ago = (latest - pd.DateOffset(months=6)) + pd.offsets.MonthBegin(-1)
 
@@ -68,6 +70,72 @@ def _build_summary(df_balance, df_emergency_buffer):
         "financial_runway_vector": make_vector(financial_runway_current, financial_runway_past),
     }
 
+def _build_target_trajectory(df_balance):
+    # 日付設定
+    latest = get_latest_date()
+    latest_month = latest.replace(day=1)
+    three_month_later = latest_month + pd.DateOffset(months=3)
+    nine_month_ago = latest_month - pd.DateOffset(months=9)
+
+    #print(latest_month, three_month_later, nine_month_ago)
+    #　データ生成
+    mask = (
+        (df_balance["date"] >= nine_month_ago) & (df_balance["date"] < three_month_later)&
+        (df_balance["収支タイプ"] == "一般収支")
+    )
+    df_sub = df_balance[mask].groupby(["date","収支カテゴリー"])[["金額","目標"]].sum().reset_index()
+
+    #グラフ
+    x_values = (
+        df_sub[df_sub["収支カテゴリー"]=="収入"].set_index("date")
+        .resample("MS").sum().index.strftime("%y-%m").tolist()
+    )
+    y1_values = (
+        df_sub[df_sub["収支カテゴリー"]=="収入"].set_index("date")
+        .resample("MS").sum()["金額"].astype(int).tolist()
+    )
+    y2_values = (
+        df_sub[df_sub["収支カテゴリー"]=="収入"].set_index("date")
+        .resample("MS").sum()["目標"].astype(int).tolist()
+    )
+    y3_values = (
+        df_sub[df_sub["収支カテゴリー"]=="支出"].set_index("date")
+        .resample("MS").sum()["金額"].astype(int).tolist()
+    )
+    y4_values = (
+        df_sub[df_sub["収支カテゴリー"]=="支出"].set_index("date")
+        .resample("MS").sum()["目標"].astype(int).tolist()
+    )
+    
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=x_values, y=y1_values, name="Actual Income",
+        hovertemplate = '<i>x</i>: %{x}<br><i>y</i>: ¥%{y:,}<extra></extra>'
+    ))
+    fig.add_trace(go.Scatter(
+        x=x_values, y=y2_values, mode="lines+markers", name="Target Income",
+        hovertemplate = '<i>x</i>: %{x}<br><i>y</i>: ¥%{y:,}<extra></extra>'
+    ))
+    fig.add_trace(go.Bar(
+        x=x_values, y=y3_values, name="Actual Expense",
+        hovertemplate = '<i>x</i>: %{x}<br><i>y</i>: ¥%{y:,}<extra></extra>'
+    ))
+    fig.add_trace(go.Scatter(
+        x=x_values, y=y4_values, mode="lines+markers", name="Target Expense",
+        hovertemplate = '<i>x</i>: %{x}<br><i>y</i>: ¥%{y:,}<extra></extra>'
+    ))
+
+    fig = graph_individual_setting(fig, "date", "%y-%m", "Income and Expense", "¥", "")
+    # metaでID付与
+    fig.update_layout(meta={"id": "target_trajectory"})
+
+    #fig.show()
+
+    fig_dict = fig.to_dict()
+    json_str = json.dumps(fig_dict)
+
+    return json_str
+
 def build_Cashflow_Analytics_payload(include_graphs=False, include_summary=False):
     df_balance, df_item_attribute, df_emergency_buffer = read_table_from_db()
 
@@ -78,7 +146,7 @@ def build_Cashflow_Analytics_payload(include_graphs=False, include_summary=False
         
     if include_graphs:
         result["graphs"] = {
-            #"r": _build_asset_tree_map(df_collection,df_item_attribute),
+            "target_trajectory": _build_target_trajectory(df_balance),
             #"target_deviation": _build_target_deviation(df_collection),
             #"portfolio_efficiency_map": _build_portfolio_efficiency_map(df_collection,df_item_attribute),
             #"liquidity_pyramid": _build_liquidity_pyramid(df_collection,df_item_attribute),
@@ -99,5 +167,6 @@ if __name__ == "__main__":
     init_db(base_dir)
 
     df_balance, df_item_attribute, df_emergency_buffer = read_table_from_db()
-    print(_build_summary(df_balance,df_emergency_buffer))
+    #print(_build_summary(df_balance,df_emergency_buffer))
+    _build_target_trajectory(df_balance)
     #print(build_Cashflow_Analytics_payload(include_graphs=False, include_summary=True))
